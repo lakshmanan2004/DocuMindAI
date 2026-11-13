@@ -40,3 +40,4 @@ const chunkSchema = new mongoose.Schema(
 chunkSchema.index({ orgId: 1, documentId: 1, chunkIndex: 1 });
 
 module.exports = mongoose.model('Chunk', chunkSchema);
+

@@ -81,6 +81,17 @@ export const AuthProvider = ({ children }) => {
     setOrganization(null);
   };
 
+  const updateUser = (updatedUser, updatedOrg) => {
+    if (updatedUser) {
+      setUser(updatedUser);
+      localStorage.setItem('documind_user', JSON.stringify(updatedUser));
+    }
+    if (updatedOrg) {
+      setOrganization(updatedOrg);
+      localStorage.setItem('documind_org', JSON.stringify(updatedOrg));
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -91,7 +102,8 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!token,
         login,
         register,
-        logout
+        logout,
+        updateUser
       }}
     >
       {children}

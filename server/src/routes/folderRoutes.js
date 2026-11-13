@@ -21,3 +21,4 @@ router.patch('/:id', allow('admin'), renameFolder);
 router.delete('/:id', allow('admin'), deleteFolder);
 
 module.exports = router;
+

@@ -10,12 +10,13 @@
  * @param {number} overlap - Overlap size in characters (default 120)
  * @returns {Array<string>} Array of chunk strings
  */
-function chunkText(text, size = 800, overlap = 120) {
+function chunkText(text, size = 1500, overlap = 250) {
   if (!text || typeof text !== 'string') return [];
   const trimmed = text.trim();
   if (trimmed.length === 0) return [];
 
-  if (trimmed.length <= size) {
+  // If page text is under 1800 characters (standard 1-page invoice), keep it intact
+  if (trimmed.length <= Math.max(size, 1800)) {
     return [trimmed];
   }
 
@@ -39,11 +40,11 @@ function chunkText(text, size = 800, overlap = 120) {
 /**
  * Splits an array of document pages into chunks with metadata
  * @param {Array<{ pageNumber: number, text: string }>} pages
- * @param {number} [size=800]
- * @param {number} [overlap=120]
+ * @param {number} [size=1500]
+ * @param {number} [overlap=250]
  * @returns {Array<{ pageNumber: number, chunkIndex: number, text: string }>}
  */
-function chunkDocumentPages(pages, size = 800, overlap = 120) {
+function chunkDocumentPages(pages, size = 1500, overlap = 250) {
   const result = [];
   let globalChunkIndex = 0;
 
@@ -67,3 +68,4 @@ module.exports = {
   chunkText,
   chunkDocumentPages
 };
+

@@ -24,3 +24,4 @@ export const getLiteMode = () => {
 if (typeof window !== 'undefined') {
   initPerformanceMode();
 }
+

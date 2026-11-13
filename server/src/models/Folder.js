@@ -27,3 +27,4 @@ const folderSchema = new mongoose.Schema(
 folderSchema.index({ orgId: 1, name: 1 }, { unique: true });
 
 module.exports = mongoose.model('Folder', folderSchema);
+

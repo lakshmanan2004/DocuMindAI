@@ -49,3 +49,4 @@ function validateFileSignature(filePath) {
 module.exports = {
   validateFileSignature
 };
+

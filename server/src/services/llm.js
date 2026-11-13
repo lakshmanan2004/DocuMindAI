@@ -308,39 +308,71 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
     }
   }
 
-  // Tests table grounding & value/unit splitting
+  // Tests table grounding & value/unit splitting & method removal
+  const METHOD_BLACKLIST = new Set([
+    'calculated', 'derived', 'microscopic', 'colorimetric', 'electrical impedance',
+    'copper tartrate to colour complex', 'azobilirubin chromophores', 'creatinine amidohydrolase',
+    'urease, colorimetric', 'uricase', 'arsenazo iii', 'uv with p5p, ifcc', 'uv with p5p',
+    'direct- ise', 'direct ise', 'pta/mgcl2', 'sf cube cell analysis', 'god-pod', 'clia', 'chemiluminescence',
+    'chromatography', 'spectrophotometry', 'turbidimetry', 'nephelometry', 'end of report', 'direct measured'
+  ]);
+
   if (Array.isArray(result.tests) && result.tests.length > 0) {
     const lowerDoc = fullText.toLowerCase();
     result.tests = result.tests
       .filter((t) => {
         if (!t || !t.test_name || typeof t.test_name !== 'string') return false;
-        const name = t.test_name.trim();
-        if (name.length < 2) return false;
+        let name = t.test_name.trim();
+        const nameLower = name.toLowerCase().replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
+        if (METHOD_BLACKLIST.has(nameLower)) return false;
+        if (nameLower.length > 55) return false; // Commentary / paragraphs
+        if (/^(?:increased in|decreased in|interpretation|limitations|additional information|explanation|due to|all results|this test|mild to moderate|psa is|ige mediates|hba1c|total haemoglobin|in random)\b/i.test(name)) return false;
+        if (/^(?:colorimetric|calculated|derived|microscopic|direct measured)\b/i.test(name)) return false;
+
         const nameTokens = name.toLowerCase().split(/\s+/).filter((w) => w.length >= 3);
         const appearsInDoc = nameTokens.length > 0 && nameTokens.some((token) => lowerDoc.includes(token));
         return appearsInDoc;
       })
       .map((t) => {
-        let valStr = String(t.value || '').trim();
-        let unitStr = String(t.unit || '').trim();
-        if (valStr) {
-          const unitSplit = valStr.match(/^([0-9.,><=-]+)\s*([A-Za-z/μ%^0-9*-]+(?:\s*[A-Za-z/μ%^0-9*-]+)*)$/);
+        let name = t.test_name.trim().replace(/\s+(?:mg\/dL|g\/dL|mmol\/L|ng\/mL|pg\/mL|microIU\/mL|million\/cmm|fL|pg|%|\/cmm|U\/L)\b/gi, '').trim();
+        let val = t.value ? String(t.value).trim() : null;
+        let unit = t.unit ? String(t.unit).trim() : null;
+        let ref = t.reference_range ? String(t.reference_range).trim() : null;
+        let flag = t.flag ? String(t.flag).trim() : null;
+
+        if (flag && (flag.toLowerCase() === 'null' || METHOD_BLACKLIST.has(flag.toLowerCase()))) flag = null;
+        if (unit && (unit.toLowerCase() === 'null' || unit === '0' || unit === 'Concentration' || unit === 'Area %')) unit = null;
+
+        // Split unit from value if needed
+        if (val) {
+          const unitSplit = val.match(/^([0-9.,><=-]+)\s*([A-Za-z/μ%^0-9*-]+(?:\s*[A-Za-z/μ%^0-9*-]+)*)$/);
           if (unitSplit) {
-            valStr = unitSplit[1].trim();
-            if (!unitStr) unitStr = unitSplit[2].trim();
+            val = unitSplit[1].trim();
+            if (!unit) unit = unitSplit[2].trim();
           }
         }
+
+        // Swap if value has range and ref is single number
+        const isRange = (s) => s && (/\d+\.?\d*\s*[-–]\s*\d+\.?\d*/.test(s) || /^[<>=]\s*\d+/.test(s) || /^(?:normal|desirable|optimal|borderline)/i.test(s));
+        const isSingleNumber = (s) => s && /^[0-9]+(?:\.[0-9]+)?$/.test(s.replace(/,/g, ''));
+        if (isRange(val) && isSingleNumber(ref)) {
+          const temp = val;
+          val = ref;
+          ref = temp;
+        }
+
         return {
-          test_name: t.test_name.trim(),
-          value: valStr || null,
-          unit: unitStr || null,
-          reference_range: t.reference_range ? String(t.reference_range).trim() : null,
-          flag: t.flag ? String(t.flag).trim() : null
+          test_name: name,
+          value: val || null,
+          unit: unit || null,
+          reference_range: ref || null,
+          flag: flag || null
         };
       });
   }
 
   // 5. Mark Sheet specifics
+  // Course
   if (!result.course || result.course.length < 3 || /^(?:not\s*specified|null|n\/a)$/i.test(result.course)) {
     const courseMatch = fullText.match(/\b(Bachelor\s*of\s*[A-Za-z\s]+|Master\s*of\s*[A-Za-z\s]+|B\.?Sc\.?(?:\s*\([A-Za-z\s]+\))?|B\.?Tech\.?(?:\s*\([A-Za-z\s]+\))?|B\.?E\.?|B\.?Com\.?|M\.?Sc\.?|M\.?Tech\.?|Diploma\s*in\s*[A-Za-z\s]+|Class\s*(?:X|XII|10th|12th))\b/i);
     if (courseMatch) result.course = courseMatch[0].trim();
@@ -352,7 +384,16 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
     }
   }
 
-  if (!result.semester || /^(?:not\s*specified|null|n\/a)$/i.test(result.semester)) {
+  // Semester vs Academic Year
+  const hasSem1 = /\b(?:I|1st)\s*SEMESTER\b/i.test(fullText);
+  const hasSem2 = /\b(?:II|2nd)\s*SEMESTER\b/i.test(fullText);
+  if (hasSem1 && hasSem2) {
+    result.semester = 'Semester I & II';
+  } else if (hasSem1) {
+    result.semester = 'Semester I';
+  } else if (hasSem2) {
+    result.semester = 'Semester II';
+  } else if (!result.semester || /^(?:not\s*specified|null|n\/a)$/i.test(result.semester)) {
     const semMatch =
       fullText.match(/\b(First|Second|Third|Fourth|Final|\d+(?:st|nd|rd|th)?)\s*Year\b/i) ||
       fullText.match(/\b(Semester\s*[-:]?\s*(?:[IVXLCDM\d]+|\d+(?:st|nd|rd|th)?)|Sem\s*[-:]?\s*[IVXLCDM\d]+)\b/i);
@@ -363,23 +404,36 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
     }
   }
 
-  if (result.exam_session) {
-    const sess = String(result.exam_session).trim();
-    if (
-      /^(?:not\s*specified|null|n\/a|none|undefined)$/i.test(sess) ||
-      !/(?:\d{4}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|summer|winter|spring|autumn)/i.test(sess)
-    ) {
-      result.exam_session = null;
-    }
+  // Exam session (Never allow hallucinated sessions like Nov-Dec 2026!)
+  const sessionMatch =
+    fullText.match(/(?:Session|Exam(?:\s*session)?)\s*[:.-]?\s*([A-Za-z]{3,9}(?:-[A-Za-z]{3,9})?\s*\d{4}|\d{4}\s*[-–]\s*\d{2,4})/i);
+  if (sessionMatch) {
+    result.exam_session = sessionMatch[1].replace(/\s+/g, ' ').trim();
   } else {
-    const sessionMatch = fullText.match(/(?:Exam(?:\s*session)?|Session)\s*[:.-]?\s*([A-Za-z]{3,9}(?:-[A-Za-z]{3,9})?\s*\d{4}|\d{4}-\d{2,4})/i);
-    if (sessionMatch) {
-      result.exam_session = sessionMatch[1].trim();
+    if (result.exam_session && fullText.includes(String(result.exam_session).trim())) {
+      result.exam_session = String(result.exam_session).trim();
     } else {
       result.exam_session = null;
     }
   }
 
+  // Total Marks from Grand Total
+  const grandTotalMatch = fullText.match(/(?:Grand\s*Total|Total\s*Marks|Total)\s*[:.-]?\s*([0-9]{2,4})(?:\s*[\/|]\s*([0-9]{2,4}))?/i);
+  if (grandTotalMatch) {
+    const marksNum = parseFloat(grandTotalMatch[1]);
+    if (!isNaN(marksNum) && marksNum > 50) {
+      result.total_marks = marksNum;
+    }
+  }
+
+  // Result (Pass/Fail)
+  const resultMatch = fullText.match(/\b(PASS|PASSED|FAIL|FAILED|PROMOTED|FIRST\s*DIVISION|DISTINCTION)\b/i);
+  if (resultMatch) {
+    const r = resultMatch[1].toUpperCase();
+    result.result = r === 'PASS' || r === 'PASSED' ? 'Pass' : r === 'FAIL' || r === 'FAILED' ? 'Fail' : resultMatch[1];
+  }
+
+  // Subjects table extraction & cleanup
   if (Array.isArray(result.subjects) && result.subjects.length > 0) {
     const lowerDoc = fullText.toLowerCase();
     result.subjects = result.subjects.filter((s) => {

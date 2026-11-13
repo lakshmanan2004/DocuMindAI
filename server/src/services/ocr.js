@@ -15,12 +15,18 @@ const preprocessImage = async (inputPath) => {
 
     let pipeline = sharp(inputPath);
 
-    // Limit oversized images to 2500px width for fast and reliable OCR
-    if (meta.width && meta.width > 2500) {
-      pipeline = pipeline.resize({ width: 2500, withoutEnlargement: true });
+    // If image is low-resolution (< 1800px), upscale 2x with lanczos3 for crisp OCR character definition
+    if (meta.width && meta.width < 1800) {
+      pipeline = pipeline.resize({ width: Math.min(2600, Math.round(meta.width * 2)), kernel: 'lanczos3' });
+    } else if (meta.width && meta.width > 2800) {
+      pipeline = pipeline.resize({ width: 2800, withoutEnlargement: true });
     }
 
-    const processedBuffer = await pipeline.grayscale().toBuffer();
+    const processedBuffer = await pipeline
+      .grayscale()
+      .normalize()
+      .sharpen({ sigma: 1.2 })
+      .toBuffer();
     return processedBuffer;
   } catch (error) {
     console.warn('[OCR Preprocess Warning] Falling back to raw file:', error.message);

@@ -6,6 +6,7 @@ import {
   FileText,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   Save,
   ArrowLeft,
   RefreshCw,
@@ -17,9 +18,13 @@ import {
   BookOpen,
   MessageSquare,
   Sparkles,
-  Layers
+  Layers,
+  Plus,
+  Trash2,
+  Table as TableIcon,
+  List as ListIcon
 } from 'lucide-react';
-import { Button, Card, StatusBadge, ConfidenceBar, SegmentedControl, Modal, Select } from '../ui';
+import { Button, Card, StatusBadge, ConfidenceBar, SegmentedControl, Modal, Select, IconButton } from '../ui';
 
 const Review = () => {
   const { id } = useParams();
@@ -43,13 +48,13 @@ const Review = () => {
   // Action states
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
 
   // Change Type Modal
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [availableTemplates, setAvailableTemplates] = useState([]);
   const [selectedNewType, setSelectedNewType] = useState('');
-  const [reprocessing, setReprocessing] = useState(false);
 
   const fetchDocumentData = async () => {
     setLoading(true);
@@ -99,12 +104,83 @@ const Review = () => {
     }
   }, [activeTab]);
 
+  // --- Field Modification Handlers ---
   const handleFieldValueChange = (key, newValue) => {
     setFields((prev) =>
       prev.map((f) => (f.key === key ? { ...f, value: newValue, edited: true } : f))
     );
   };
 
+  // Table Row Handlers
+  const handleTableCellChange = (fieldKey, rowIndex, colKey, value) => {
+    setFields((prev) =>
+      prev.map((f) => {
+        if (f.key !== fieldKey) return f;
+        const rows = Array.isArray(f.value) ? [...f.value] : [];
+        if (rows[rowIndex]) {
+          rows[rowIndex] = { ...rows[rowIndex], [colKey]: value };
+        }
+        return { ...f, value: rows, edited: true };
+      })
+    );
+  };
+
+  const handleAddTableRow = (fieldKey) => {
+    setFields((prev) =>
+      prev.map((f) => {
+        if (f.key !== fieldKey) return f;
+        const rows = Array.isArray(f.value) ? [...f.value] : [];
+        const sampleKeys = rows.length > 0 ? Object.keys(rows[0]) : ['item', 'amount'];
+        const newRow = {};
+        for (const k of sampleKeys) newRow[k] = '';
+        return { ...f, value: [...rows, newRow], edited: true };
+      })
+    );
+  };
+
+  const handleRemoveTableRow = (fieldKey, rowIndex) => {
+    setFields((prev) =>
+      prev.map((f) => {
+        if (f.key !== fieldKey) return f;
+        const rows = Array.isArray(f.value) ? f.value.filter((_, i) => i !== rowIndex) : [];
+        return { ...f, value: rows, edited: true };
+      })
+    );
+  };
+
+  // List Item Handlers
+  const handleListItemChange = (fieldKey, index, value) => {
+    setFields((prev) =>
+      prev.map((f) => {
+        if (f.key !== fieldKey) return f;
+        const items = Array.isArray(f.value) ? [...f.value] : [];
+        items[index] = value;
+        return { ...f, value: items, edited: true };
+      })
+    );
+  };
+
+  const handleAddListItem = (fieldKey) => {
+    setFields((prev) =>
+      prev.map((f) => {
+        if (f.key !== fieldKey) return f;
+        const items = Array.isArray(f.value) ? [...f.value, ''] : [''];
+        return { ...f, value: items, edited: true };
+      })
+    );
+  };
+
+  const handleRemoveListItem = (fieldKey, index) => {
+    setFields((prev) =>
+      prev.map((f) => {
+        if (f.key !== fieldKey) return f;
+        const items = Array.isArray(f.value) ? f.value.filter((_, i) => i !== index) : [];
+        return { ...f, value: items, edited: true };
+      })
+    );
+  };
+
+  // --- Save Corrections ---
   const handleSaveCorrections = async () => {
     setSaving(true);
     setStatusMessage({ type: '', text: '' });
@@ -115,7 +191,7 @@ const Review = () => {
       const { data } = await api.put(`/documents/${id}/extraction`, payload);
       setExtraction(data.extraction);
       setFields(data.extraction.fields);
-      setValidationIssues(data.extraction.validationIssues);
+      setValidationIssues(data.extraction.validationIssues || []);
       setStatusMessage({ type: 'success', text: 'Corrections saved and re-validated!' });
       setTimeout(() => setStatusMessage({ type: '', text: '' }), 3000);
     } catch (err) {
@@ -128,6 +204,7 @@ const Review = () => {
     }
   };
 
+  // --- Approve Document ---
   const handleApprove = async () => {
     setApproving(true);
     setStatusMessage({ type: '', text: '' });
@@ -150,18 +227,18 @@ const Review = () => {
     }
   };
 
-  const handleChangeType = async () => {
-    if (!selectedNewType) return;
+  // --- Reprocess Document ---
+  const handleReprocess = async (targetTemplateId = null) => {
     setReprocessing(true);
     try {
       await api.post(`/documents/${id}/reprocess`, {
-        templateId: selectedNewType
+        templateId: targetTemplateId || doc.templateId
       });
       setShowTypeModal(false);
-      navigate('/library');
+      setStatusMessage({ type: 'success', text: 'Document enqueued for fresh reprocessing.' });
+      setTimeout(() => navigate('/library'), 1000);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to change document type');
-    } finally {
+      alert(err.response?.data?.message || 'Failed to reprocess document');
       setReprocessing(false);
     }
   };
@@ -198,6 +275,12 @@ const Review = () => {
   const fileUrl = `/api/documents/${doc._id}/file?token=${encodeURIComponent(token)}`;
   const isImage = doc.mimeType?.startsWith('image/');
 
+  // Compute overall average confidence
+  const validConfFields = fields.filter((f) => typeof f.confidence === 'number' && f.value !== null);
+  const overallConfidence = validConfFields.length > 0
+    ? Math.round((validConfFields.reduce((sum, f) => sum + f.confidence, 0) / validConfFields.length) * 100)
+    : 0;
+
   return (
     <div className="space-y-4">
       {/* Header with Type, Confidence, Status & Tabs */}
@@ -223,12 +306,8 @@ const Review = () => {
                 </span>
                 <span>•</span>
                 <span>{doc.pageCount || pages.length || 1} page(s)</span>
-                {doc.classificationConfidence > 0 && (
-                  <>
-                    <span>•</span>
-                    <span>Confidence: {Math.round(doc.classificationConfidence * 100)}%</span>
-                  </>
-                )}
+                <span>•</span>
+                <span>Overall Confidence: <strong className="text-slate-800 dark:text-slate-100">{overallConfidence}%</strong></span>
               </div>
             </div>
           </div>
@@ -236,14 +315,27 @@ const Review = () => {
           {/* Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
             {canReview && (
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={Layers}
-                onClick={() => setShowTypeModal(true)}
-              >
-                Change Type
-              </Button>
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={Layers}
+                  onClick={() => setShowTypeModal(true)}
+                >
+                  Change Type
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={RefreshCw}
+                  loading={reprocessing}
+                  onClick={() => handleReprocess()}
+                  title="Reprocess with current template"
+                >
+                  Reprocess
+                </Button>
+              </>
             )}
 
             {canReview && activeTab === 'review' && (
@@ -255,7 +347,7 @@ const Review = () => {
                   loading={saving}
                   onClick={handleSaveCorrections}
                 >
-                  Save
+                  Save Draft
                 </Button>
 
                 <Button
@@ -319,7 +411,7 @@ const Review = () => {
       {/* TAB 1: REVIEW (Viewer + Fields Dual Pane) */}
       {activeTab === 'review' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[75vh]">
-          {/* Left Column: Original Document */}
+          {/* Left Column: Original Document Preview */}
           <div className="lg:col-span-7 flex flex-col space-y-3">
             <Card className="p-0 overflow-hidden flex-1 flex flex-col min-h-[550px]">
               <div className="p-3 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/10 flex items-center justify-between text-xs text-[#6B7280]">
@@ -369,11 +461,16 @@ const Review = () => {
                   <ShieldAlert className="w-4 h-4" />
                   <span>Validation Rules Flagged ({validationIssues.length})</span>
                 </div>
-                <ul className="space-y-1 text-xs text-[#1C1C1E] dark:text-[#F2F2F7]">
+                <ul className="space-y-1.5 text-xs text-[#1C1C1E] dark:text-[#F2F2F7]">
                   {validationIssues.map((issue, idx) => (
                     <li key={idx} className="flex items-start gap-1.5">
-                      <span className="text-[#FF9500] font-bold">•</span>
-                      <span>{issue.message}</span>
+                      <span className={`font-bold ${issue.severity === 'error' ? 'text-rose-600' : 'text-amber-600'}`}>•</span>
+                      <span>
+                        <strong className="uppercase text-[10px] mr-1 opacity-70">
+                          {typeof issue === 'object' ? issue.rule : ''}
+                        </strong>
+                        {typeof issue === 'object' ? issue.message : issue}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -387,7 +484,7 @@ const Review = () => {
                   Extracted Fields ({fields.length})
                 </span>
                 <span className="text-[11px] text-[#6B7280]">
-                  Click to inspect source
+                  Click to inspect grounding
                 </span>
               </div>
 
@@ -396,10 +493,12 @@ const Review = () => {
                   No extracted fields found. You can reprocess the document with a designated template.
                 </p>
               ) : (
-                <div className="space-y-3.5 max-h-[600px] overflow-y-auto pr-1">
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
                   {fields.map((field) => {
                     const isSelected = activeFieldKey === field.key;
-                    const isLowConfidence = field.confidence < 0.7;
+                    const isLowConfidence = field.confidence < 0.60;
+                    const isTable = field.type === 'table' || (Array.isArray(field.value) && field.value.length > 0 && typeof field.value[0] === 'object');
+                    const isList = field.type === 'list' || (Array.isArray(field.value) && (!isTable));
 
                     return (
                       <div
@@ -411,24 +510,140 @@ const Review = () => {
                             : 'border-black/5 dark:border-white/10 hover:border-black/15 bg-white dark:bg-[#1C1C1E]'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="text-xs font-medium text-[#6B7280]">
-                            {field.label || field.key}
-                          </label>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1.5">
+                            {isTable ? (
+                              <TableIcon className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                            ) : isList ? (
+                              <ListIcon className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                            ) : (
+                              <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            )}
+                            <label className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                              {field.label || field.key}
+                            </label>
+                            {field.edited && (
+                              <span className="text-[9px] px-1 rounded bg-indigo-50 text-indigo-600 font-medium">
+                                Edited
+                              </span>
+                            )}
+                          </div>
                           <div className="w-24">
                             <ConfidenceBar score={field.confidence || 0} />
                           </div>
                         </div>
 
-                        <input
-                          type="text"
-                          disabled={!canReview}
-                          value={field.value !== null && field.value !== undefined ? field.value : ''}
-                          onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
-                          className={`w-full px-3 py-1.5 text-xs rounded-lg border bg-white dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-[#F2F2F7] focus:outline-none focus:ring-2 focus:ring-[#007AFF] ${
-                            isLowConfidence ? 'border-[#FF9500]' : 'border-black/10 dark:border-white/10'
-                          }`}
-                        />
+                        {/* 1. TABLE FIELD: Interactive Editable Grid */}
+                        {isTable ? (
+                          <div className="space-y-2 mt-2">
+                            {Array.isArray(field.value) && field.value.length > 0 ? (
+                              <div className="overflow-x-auto border border-slate-200 rounded-lg max-h-48">
+                                <table className="w-full text-[11px] text-left border-collapse">
+                                  <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold sticky top-0">
+                                    <tr>
+                                      {Object.keys(field.value[0] || {}).map((colKey) => (
+                                        <th key={colKey} className="p-1.5 border-b border-slate-200 uppercase font-mono text-[10px]">
+                                          {colKey}
+                                        </th>
+                                      ))}
+                                      {canReview && <th className="p-1.5 border-b border-slate-200 w-8"></th>}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {field.value.map((row, rIdx) => (
+                                      <tr key={rIdx} className="border-b border-slate-100 hover:bg-slate-50/50">
+                                        {Object.keys(field.value[0] || {}).map((colKey) => (
+                                          <td key={colKey} className="p-1">
+                                            <input
+                                              type="text"
+                                              disabled={!canReview}
+                                              value={row[colKey] !== null && row[colKey] !== undefined ? row[colKey] : ''}
+                                              onChange={(e) =>
+                                                handleTableCellChange(field.key, rIdx, colKey, e.target.value)
+                                              }
+                                              className="w-full px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 text-[11px] outline-none focus:ring-1 focus:ring-indigo-500"
+                                            />
+                                          </td>
+                                        ))}
+                                        {canReview && (
+                                          <td className="p-1 text-center">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRemoveTableRow(field.key, rIdx)}
+                                              className="text-slate-400 hover:text-rose-600 p-0.5"
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </button>
+                                          </td>
+                                        )}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-slate-400 italic">No table rows extracted.</p>
+                            )}
+
+                            {canReview && (
+                              <button
+                                type="button"
+                                onClick={() => handleAddTableRow(field.key)}
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800"
+                              >
+                                <Plus className="h-3 w-3" /> Add Table Row
+                              </button>
+                            )}
+                          </div>
+                        ) : isList ? (
+                          /* 2. LIST FIELD: Items list */
+                          <div className="space-y-1.5 mt-2">
+                            {Array.isArray(field.value) && field.value.length > 0 ? (
+                              field.value.map((item, iIdx) => (
+                                <div key={iIdx} className="flex items-center gap-1.5">
+                                  <input
+                                    type="text"
+                                    disabled={!canReview}
+                                    value={item}
+                                    onChange={(e) => handleListItemChange(field.key, iIdx, e.target.value)}
+                                    className="flex-1 px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white dark:bg-[#2C2C2E] outline-none focus:ring-1 focus:ring-[#007AFF]"
+                                  />
+                                  {canReview && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveListItem(field.key, iIdx)}
+                                      className="text-slate-400 hover:text-rose-600 p-1"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-[11px] text-slate-400 italic">No items.</p>
+                            )}
+                            {canReview && (
+                              <button
+                                type="button"
+                                onClick={() => handleAddListItem(field.key)}
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-800"
+                              >
+                                <Plus className="h-3 w-3" /> Add List Item
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          /* 3. SCALAR FIELD: Input */
+                          <input
+                            type="text"
+                            disabled={!canReview}
+                            value={field.value !== null && field.value !== undefined ? field.value : ''}
+                            onChange={(e) => handleFieldValueChange(field.key, e.target.value)}
+                            className={`w-full px-3 py-1.5 text-xs rounded-lg border bg-white dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-[#F2F2F7] focus:outline-none focus:ring-2 focus:ring-[#007AFF] ${
+                              isLowConfidence ? 'border-[#FF9500]' : 'border-black/10 dark:border-white/10'
+                            }`}
+                          />
+                        )}
                       </div>
                     );
                   })}
@@ -439,7 +654,7 @@ const Review = () => {
         </div>
       )}
 
-      {/* TAB 2: TEXT (PAGES) READ-ONLY (Spec Section 6 M3) */}
+      {/* TAB 2: TEXT (PAGES) READ-ONLY */}
       {activeTab === 'text' && (
         <Card className="space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/10">
@@ -498,12 +713,10 @@ const Review = () => {
       {/* TAB 3: SUMMARY */}
       {activeTab === 'summary' && (
         <Card className="text-center py-16 space-y-3">
-          <Sparkles className="w-8 h-8 text-[#007AFF] mx-auto" />
-          <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-[#F2F2F7]">
-            AI Summary Module (M7)
-          </h3>
+          <Sparkles className="w-8 h-8 text-[#007AFF] mx-auto animate-pulse" />
+          <h3 className="text-sm font-bold text-[#1C1C1E] dark:text-[#F2F2F7]">AI Summaries</h3>
           <p className="text-xs text-[#6B7280] max-w-sm mx-auto">
-            Short, detailed, and executive summary generation for this document will be enabled in Milestone M7.
+            Available under Milestone M7 (Short, Detailed, and Executive summaries).
           </p>
         </Card>
       )}
@@ -512,53 +725,52 @@ const Review = () => {
       {activeTab === 'chat' && (
         <Card className="text-center py-16 space-y-3">
           <MessageSquare className="w-8 h-8 text-[#007AFF] mx-auto" />
-          <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-[#F2F2F7]">
-            Document-Scoped AI Chat (M6)
-          </h3>
+          <h3 className="text-sm font-bold text-[#1C1C1E] dark:text-[#F2F2F7]">Scoped Chat (RAG)</h3>
           <p className="text-xs text-[#6B7280] max-w-sm mx-auto">
-            Conversational RAG grounded exclusively in this document's pages will be enabled in Milestone M6.
+            Available under Milestone M6 (RAG with Atlas Vector search citations).
           </p>
-          <Button variant="secondary" size="sm" onClick={() => navigate('/chat')}>
-            Open Global Chat
-          </Button>
         </Card>
       )}
 
-      {/* Change Type / Template Modal */}
-      <Modal
-        isOpen={showTypeModal}
-        onClose={() => setShowTypeModal(false)}
-        title="Change Document Type & Reprocess"
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-[#6B7280]">
-            Select a new document type to reprocess this document against the designated template schema.
-          </p>
-          <Select
-            label="Target Template"
-            value={selectedNewType}
-            onChange={(e) => setSelectedNewType(e.target.value)}
-            options={[
-              { label: 'Select a template...', value: '' },
-              ...availableTemplates.map((t) => ({ label: `${t.name} (${t.fields.length} fields)`, value: t._id }))
-            ]}
-          />
-          <div className="flex justify-end gap-2 pt-2 border-t border-black/5 dark:border-white/10">
-            <Button variant="secondary" size="sm" onClick={() => setShowTypeModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              loading={reprocessing}
-              disabled={!selectedNewType}
-              onClick={handleChangeType}
-            >
-              Reprocess Document
-            </Button>
+      {/* Change Type Modal */}
+      {showTypeModal && (
+        <Modal
+          isOpen={showTypeModal}
+          onClose={() => setShowTypeModal(false)}
+          title="Change Document Type"
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500">
+              Select a target template. The document will be reprocessed and extracted against the new schema.
+            </p>
+
+            <Select
+              label="Select Template"
+              value={selectedNewType}
+              onChange={(e) => setSelectedNewType(e.target.value)}
+              options={[
+                { label: '-- Select a Template --', value: '' },
+                ...availableTemplates.map((t) => ({ label: `${t.name} (${t.fields?.length || 0} fields)`, value: t._id }))
+              ]}
+            />
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <Button variant="secondary" size="sm" onClick={() => setShowTypeModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={reprocessing}
+                disabled={!selectedNewType}
+                onClick={() => handleReprocess(selectedNewType)}
+              >
+                Apply & Reprocess
+              </Button>
+            </div>
           </div>
-        </div>
-      </Modal>
+        </Modal>
+      )}
     </div>
   );
 };

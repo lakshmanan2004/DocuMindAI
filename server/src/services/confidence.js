@@ -9,18 +9,12 @@ const KNOWN_LABELS = [
 
 /**
  * Extract clean, boundary-aligned context snippet around a match index
- * Snaps cleanly to field labels, preserves whole words, and removes adjacent column noise
- * @param {string} fullText - Complete page text
- * @param {number} matchIndex - Index where value was found
- * @param {number} matchLength - Length of matched term
- * @returns {string} - Clean context snippet
  */
 const extractCleanSnippet = (fullText, matchIndex, matchLength) => {
   if (!fullText || matchIndex < 0) return '';
 
   let start = Math.max(0, matchIndex - 60);
 
-  // If a field label directly precedes the value on the same line, snap start directly to it
   const precedingChunk = fullText.slice(start, matchIndex);
   let snappedToLabel = false;
   for (const labelRegex of KNOWN_LABELS) {
@@ -32,7 +26,6 @@ const extractCleanSnippet = (fullText, matchIndex, matchLength) => {
     }
   }
 
-  // If no known label, snap to preceding newline or word boundary
   if (!snappedToLabel) {
     const prevNewline = fullText.lastIndexOf('\n', matchIndex);
     if (prevNewline !== -1 && prevNewline >= start) {
@@ -57,7 +50,6 @@ const extractCleanSnippet = (fullText, matchIndex, matchLength) => {
   }
 
   let snippet = fullText.slice(start, end).replace(/\r/g, ' ').replace(/\n+/g, ' ').trim();
-  // Strip stray leading/trailing punctuation artifacts from OCR table borders
   snippet = snippet.replace(/^[|:\-_*~•[\]{}()\s]+/, '').replace(/[|:\-_*~•[\]{}()\s]+$/, '').trim();
 
   return snippet;
@@ -67,29 +59,30 @@ const extractCleanSnippet = (fullText, matchIndex, matchLength) => {
  * Score confidence for each extracted field based on source page verification
  * and validation integrity
  *
- * Rules (from Guide Section 8):
- * - value is null -> 0
- * - value found word-for-word in the page -> 0.9 (save sourcePage and surrounding snippet)
- * - value not found in page text -> 0.4 (flags possible hallucination)
- * - validation rule failed for this field -> min(score, 0.3)
+ * Rules:
+ * - value is null/empty -> 0
+ * - value found word-for-word in page text -> 0.90 to 0.95 (with sourcePage and snippet)
+ * - value not found word-for-word (inferred) -> 0.45
+ * - validation rule failed with severity error -> min(confidence, 0.30)
+ * - validation rule failed with severity warning -> min(confidence, 0.60)
  *
  * @param {Array<Object>} templateFields - Fields defined in the template
  * @param {Object} extractedValues - Key-value map from LLM / parser
  * @param {Array<Object>} pages - List of DocumentPage records { pageNumber, text, ocrConfidence }
- * @param {Array<string>} validationIssues - List of validation issues
+ * @param {Array<Object|string>} validationIssues - List of validation issues
  * @returns {Array<Object>} - Scored field objects ready for Extraction model
  */
-const scoreConfidence = (templateFields, extractedValues, pages, validationIssues = []) => {
-  const issuesText = validationIssues.join(' ').toLowerCase();
-
+const scoreConfidence = (templateFields = [], extractedValues = {}, pages = [], validationIssues = []) => {
   return templateFields.map((field) => {
     const rawVal = extractedValues[field.key];
     const key = field.key;
 
     // 1. Value is null or undefined
-    if (rawVal === null || rawVal === undefined || String(rawVal).trim() === '') {
+    if (rawVal === null || rawVal === undefined || (typeof rawVal === 'string' && rawVal.trim() === '')) {
       return {
         key,
+        label: field.label,
+        type: field.type,
         value: null,
         confidence: 0,
         sourcePage: 1,
@@ -98,15 +91,108 @@ const scoreConfidence = (templateFields, extractedValues, pages, validationIssue
       };
     }
 
+    // 2. Handle Table Field Type
+    if (field.type === 'table' || Array.isArray(rawVal)) {
+      if (Array.isArray(rawVal) && rawVal.length > 0) {
+        let foundPage = 1;
+        let matchedRowsCount = 0;
+
+        for (const row of rawVal) {
+          const rowValues = typeof row === 'object' && row !== null ? Object.values(row) : [row];
+          for (const cell of rowValues) {
+            if (!cell) continue;
+            const cellStr = String(cell).toLowerCase().trim();
+            if (cellStr.length < 2) continue;
+
+            for (const p of pages) {
+              if ((p.text || '').toLowerCase().includes(cellStr)) {
+                foundPage = p.pageNumber;
+                matchedRowsCount++;
+                break;
+              }
+            }
+          }
+        }
+
+        const tableConf = matchedRowsCount > 0 ? 0.92 : 0.50;
+
+        // Check if any rule flagged this table
+        let ruleConf = tableConf;
+        for (const issue of validationIssues) {
+          const matchesTable =
+            issue.table === key ||
+            issue.field === key ||
+            (issue.message && issue.message.toLowerCase().includes(key.toLowerCase()));
+
+          if (matchesTable) {
+            ruleConf = issue.severity === 'error' ? 0.30 : 0.60;
+            break;
+          }
+        }
+
+        return {
+          key,
+          label: field.label,
+          type: 'table',
+          value: rawVal,
+          confidence: parseFloat(ruleConf.toFixed(2)),
+          sourcePage: foundPage,
+          sourceText: `Table with ${rawVal.length} row(s)`,
+          edited: false
+        };
+      } else {
+        return {
+          key,
+          label: field.label,
+          type: field.type,
+          value: [],
+          confidence: 0,
+          sourcePage: 1,
+          sourceText: '',
+          edited: false
+        };
+      }
+    }
+
+    // 3. Handle List Field Type
+    if (field.type === 'list') {
+      const items = Array.isArray(rawVal) ? rawVal : [rawVal];
+      let foundPage = 1;
+      let matchedCount = 0;
+
+      for (const item of items) {
+        const itemStr = String(item).toLowerCase().trim();
+        for (const p of pages) {
+          if ((p.text || '').toLowerCase().includes(itemStr)) {
+            foundPage = p.pageNumber;
+            matchedCount++;
+            break;
+          }
+        }
+      }
+
+      const listConf = matchedCount > 0 ? 0.90 : 0.50;
+      return {
+        key,
+        label: field.label,
+        type: 'list',
+        value: items,
+        confidence: parseFloat(listConf.toFixed(2)),
+        sourcePage: foundPage,
+        sourceText: items.slice(0, 3).join(', '),
+        edited: false
+      };
+    }
+
+    // 4. Scalar Fields (string, number, date, boolean)
     const searchStr = String(rawVal).trim().toLowerCase();
     let foundPage = 1;
     let foundSnippet = '';
     let isWordForWord = false;
 
-    // Build candidate search terms to handle formatting differences (e.g. date ISO 2025-10-01 vs doc 01.10.2025)
     const candidates = [searchStr];
 
-    // If it's a date in YYYY-MM-DD
+    // Date variations
     const dateMatch = searchStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (dateMatch) {
       const [_, y, m, d] = dateMatch;
@@ -126,130 +212,61 @@ const scoreConfidence = (templateFields, extractedValues, pages, validationIssue
         candidates.push(`${d} ${monthShort} ${y}`);
         candidates.push(`${dNum} ${monthShort} ${y}`);
         candidates.push(`${d}-${monthShort}-${y}`);
-        candidates.push(`${dNum}-${monthShort}-${y}`);
         candidates.push(`${monthShort} ${d} ${y}`);
-        candidates.push(`${monthShort} ${dNum} ${y}`);
       }
       if (monthLong) {
         candidates.push(`${d} ${monthLong} ${y}`);
         candidates.push(`${dNum} ${monthLong} ${y}`);
         candidates.push(`${monthLong} ${d} ${y}`);
-        candidates.push(`${monthLong} ${dNum} ${y}`);
       }
     }
 
-    // If it's a sanitized GSTIN (with 'Z' at index 13), also check OCR '2' variation
-    if (searchStr.length === 15 && searchStr[13] === 'z') {
-      candidates.push(searchStr.slice(0, 13) + '2' + searchStr.slice(14));
-    }
-
-    // If it's a number (total amount, e.g. 1499 or 899)
+    // Number variations
     const numVal = parseFloat(rawVal);
     if (!isNaN(numVal)) {
-      const enUsWithDec = numVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const enUsNoDec = numVal.toLocaleString('en-US', { maximumFractionDigits: 0 });
-      const enInWithDec = numVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const enInNoDec = numVal.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-
-      const numberFormats = new Set([
-        numVal.toFixed(2),
-        numVal.toString(),
-        enUsWithDec,
-        enUsNoDec,
-        enInWithDec,
-        enInNoDec
-      ]);
-
-      for (const fmt of numberFormats) {
-        candidates.push(fmt);
-        candidates.push(`₹${fmt}`);
-        candidates.push(`₹ ${fmt}`);
-        candidates.push(`3${fmt}`);  // OCR misread of ₹ as 3 (e.g. 31,499.00 or 3899.00)
-        candidates.push(`r${fmt}`);  // OCR misread of ₹ as r
-      }
+      candidates.push(numVal.toFixed(2));
+      candidates.push(numVal.toString());
+      candidates.push(numVal.toLocaleString('en-US'));
+      candidates.push(numVal.toLocaleString('en-IN'));
+      candidates.push(`₹${numVal}`);
+      candidates.push(`$${numVal}`);
     }
 
-    // 2. Search for exact or candidate match across all document pages
+    // Search across document pages
     for (const page of pages) {
       const pageText = (page.text || '').toLowerCase();
 
-      // Priority 1 for Total Amount: Search for explicit "Total : ...", "Grand Total : ...", "Net Payable : ..."
-      // This prevents matching intermediate line-item table rows that happen to contain the same price
-      if (!isNaN(numVal) && (key === 'total_amount' || key.includes('amount') || key.includes('total'))) {
-        const intStr = String(Math.floor(numVal));
-        if (intStr.length >= 2) {
-          const flexibleDigits = intStr.split('').join('[,\\s]?');
-          const totalSummaryRegex = new RegExp(`(?:(?:grand\\s*)?total|amount\\s*payable|net\\s*payable|balance\\s*due)\\s*[:.-]?\\s*(?:[₹3r]\\s*)?${flexibleDigits}(?:\\.\\d{2})?`, 'i');
-          const match = page.text.match(totalSummaryRegex);
-          if (match) {
-            isWordForWord = true;
-            foundPage = page.pageNumber;
-            foundSnippet = extractCleanSnippet(page.text, match.index, match[0].length);
-          }
-        }
-      }
-
-      // Priority 2: General candidate match (if not already matched by priority summary)
-      if (!isWordForWord) {
-        for (const candidate of candidates) {
-          const matchIndex = pageText.indexOf(candidate.toLowerCase());
-          if (matchIndex !== -1) {
-            isWordForWord = true;
-            foundPage = page.pageNumber;
-            foundSnippet = extractCleanSnippet(page.text, matchIndex, candidate.length);
-            break;
-          }
-        }
-      }
-
-      // Priority 3: Resilient number pattern (handles arbitrary digit spacing/commas & currency symbols)
-      if (!isWordForWord && !isNaN(numVal)) {
-        const intStr = String(Math.floor(numVal));
-        if (intStr.length >= 2) {
-          const flexibleDigits = intStr.split('').join('[,\\s]?');
-          const numPattern = new RegExp(`(?:[₹3r]\\s*)?${flexibleDigits}(?:\\.\\d{2})?`, 'i');
-          const regexMatch = page.text.match(numPattern);
-          if (regexMatch) {
-            isWordForWord = true;
-            foundPage = page.pageNumber;
-            foundSnippet = extractCleanSnippet(page.text, regexMatch.index, regexMatch[0].length);
-          }
-        }
-      }
-
-      // Cross-link "Amount in Words" section for total_amount
-      if (!isNaN(numVal) && (key === 'total_amount' || key.includes('amount') || key.includes('total'))) {
-        const wordsSectionMatch = page.text.match(/(?:Amount\s*in\s*Words|In\s*words|Rupees\s*in\s*words)\s*[:.-]?\s*([A-Za-z\s-]+?)(?:only|\n|For|$)/i);
-        if (wordsSectionMatch) {
-          const wordsOnly = wordsSectionMatch[1].trim();
-          if (foundSnippet) {
-            foundSnippet = `${foundSnippet} (Amount in Words: "${wordsOnly} only")`;
-          } else {
-            isWordForWord = true;
-            foundPage = page.pageNumber;
-            foundSnippet = `Amount in Words: "${wordsOnly} only"`;
-          }
+      for (const candidate of candidates) {
+        const matchIndex = pageText.indexOf(candidate.toLowerCase());
+        if (matchIndex !== -1) {
+          isWordForWord = true;
+          foundPage = page.pageNumber;
+          foundSnippet = extractCleanSnippet(page.text, matchIndex, candidate.length);
+          break;
         }
       }
 
       if (isWordForWord) break;
     }
 
-    // Baseline confidence
-    let confidence = isWordForWord ? 0.9 : 0.4;
+    let confidence = isWordForWord ? 0.92 : 0.45;
 
-    // 3. Validation rule check penalty: if validation issues mention this field
-    const fieldKeyMentioned = issuesText.includes(key.toLowerCase());
-    const gstinFailed = key === 'gstin' && issuesText.includes('gstin');
-    const totalFailed = (key === 'total_amount' || key === 'items') && issuesText.includes('total');
-    const duplicateFailed = key === 'invoice_number' && issuesText.includes('duplicate');
+    // Validation rule check
+    for (const issue of validationIssues) {
+      const fieldMatched =
+        issue.field === key ||
+        (Array.isArray(issue.fields) && issue.fields.includes(key)) ||
+        (issue.message && issue.message.toLowerCase().includes(key.toLowerCase()));
 
-    if (fieldKeyMentioned || gstinFailed || totalFailed || duplicateFailed) {
-      confidence = Math.min(confidence, 0.3);
+      if (fieldMatched) {
+        confidence = issue.severity === 'error' ? Math.min(confidence, 0.30) : Math.min(confidence, 0.60);
+      }
     }
 
     return {
       key,
+      label: field.label,
+      type: field.type || 'string',
       value: rawVal,
       confidence: parseFloat(confidence.toFixed(2)),
       sourcePage: foundPage,
@@ -262,4 +279,3 @@ const scoreConfidence = (templateFields, extractedValues, pages, validationIssue
 module.exports = {
   scoreConfidence
 };
-

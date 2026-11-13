@@ -5,13 +5,21 @@ const extractedFieldSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  label: {
+    type: String,
+    default: ''
+  },
+  type: {
+    type: String,
+    default: 'string'
+  },
   value: {
     type: mongoose.Schema.Types.Mixed,
     default: null
   },
   confidence: {
     type: Number,
-    default: 0 // 0 to 1 scale (e.g. 0.9 = high confidence, < 0.7 = needs review)
+    default: 0
   },
   sourcePage: {
     type: Number,
@@ -49,7 +57,7 @@ const extractionSchema = new mongoose.Schema(
     },
     fields: [extractedFieldSchema],
     validationIssues: {
-      type: [String],
+      type: [mongoose.Schema.Types.Mixed],
       default: []
     },
     reviewedBy: {
@@ -70,4 +78,3 @@ const extractionSchema = new mongoose.Schema(
 extractionSchema.index({ orgId: 1, documentId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Extraction', extractionSchema);
-

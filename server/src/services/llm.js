@@ -137,7 +137,6 @@ const parseDateToISO = (dateStr) => {
 
 /**
  * Sanitize common OCR character confusions in GSTIN
- * e.g., The 14th character in Indian GSTIN is ALWAYS 'Z'. OCR frequently confuses 'Z' with '2'.
  */
 const sanitizeGstin = (val) => {
   if (!val || typeof val !== 'string') return val;
@@ -187,219 +186,232 @@ const wordsToNumber = (wordsStr) => {
 };
 
 /**
- * Post-process extracted fields with financial domain rules and deterministic Tier-2 recovery
+ * Post-process extracted fields with domain normalization and date parsing
  */
-const postProcessExtracted = (extracted, fullText) => {
+const postProcessExtracted = (extracted, fullText, template = {}) => {
   const result = { ...extracted };
 
-  // 1. Strict GSTIN validation, filtering, and auto-recovery
-  if (result.gstin) {
-    const rawGstin = String(result.gstin).replace(/[\s-]/g, '').toUpperCase();
-    const sanitized = sanitizeGstin(rawGstin);
-    const isValidGstin = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/.test(sanitized);
-
-    if (isValidGstin) {
-      result.gstin = sanitized;
-    } else {
-      console.log(`[GSTIN Filter] Discarded non-GSTIN candidate "${result.gstin}"`);
-      result.gstin = null;
+  // 1. Generic date normalization for any date fields
+  for (const [key, val] of Object.entries(result)) {
+    if (key.includes('date') && typeof val === 'string') {
+      const iso = parseDateToISO(val);
+      if (iso) result[key] = iso;
     }
   }
 
-  // Tier 2 Backfill: If GSTIN was null or rejected, scan document text for verified GSTIN
-  if (!result.gstin) {
-    // A. Labeled match (e.g. "GST Registration No:33AAJCC8517E1ZS", "GSTIN: ...")
-    const labeledMatch = fullText.match(/(?:GSTIN|GST\s*Reg(?:istration)?(?:\s*No\.?)?|GST\s*No\.?)\s*[:.-]?\s*([0-9A-Z]{15})/i);
-    if (labeledMatch) {
-      const candidate = sanitizeGstin(labeledMatch[1].toUpperCase());
-      if (/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/.test(candidate)) {
-        console.log(`[GSTIN Auto-Recovery] Extracted verified labeled GSTIN: ${candidate}`);
-        result.gstin = candidate;
-      }
-    }
-
-    // B. Standalone 15-character GST format match
-    if (!result.gstin) {
-      const strictMatch = fullText.match(/\b\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z21][A-Z\d]{1}\b/i);
-      if (strictMatch) {
-        const candidate = sanitizeGstin(strictMatch[0].toUpperCase());
-        if (/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/.test(candidate)) {
-          console.log(`[GSTIN Auto-Recovery] Extracted verified standalone GSTIN: ${candidate}`);
-          result.gstin = candidate;
-        }
-      }
-    }
+  // 2. Invoice / Tax specifics (only when relevant fields exist)
+  if (result.supplier_gstin) {
+    const raw = String(result.supplier_gstin).replace(/[\s-]/g, '').toUpperCase();
+    result.supplier_gstin = sanitizeGstin(raw);
+  }
+  if (result.buyer_gstin) {
+    const raw = String(result.buyer_gstin).replace(/[\s-]/g, '').toUpperCase();
+    result.buyer_gstin = sanitizeGstin(raw);
   }
 
-  // 2. Invoice Number Auto-Recovery
-  if (!result.invoice_number) {
-    const invMatch = fullText.match(/Invoice\s*(?:Number|No\.?|#)\s*[:.-]?\s*([A-Z0-9\/-]{3,30})/i);
-    if (invMatch) {
-      result.invoice_number = invMatch[1].trim();
-    }
-  }
-
-  // 3. Cross-verify Total Amount with "Amount in Words" (resolves ₹ symbol read as 3)
-  const wordsMatch = fullText.match(/(?:Amount\s*in\s*Words|In\s*words|Rupees\s*in\s*words)\s*[:.-]?\s*([A-Za-z\s-]+?)(?:only|\n|For|$)/i);
-  if (wordsMatch) {
-    const verifiedWordsAmt = wordsToNumber(wordsMatch[1]);
-    if (verifiedWordsAmt) {
-      if (
-        result.total_amount === null ||
-        result.total_amount === undefined ||
-        String(result.total_amount).startsWith('3' + verifiedWordsAmt) ||
-        Math.abs(result.total_amount - verifiedWordsAmt) > 100
-      ) {
-        console.log(`[Total Amount Auto-Correction] Correcting ${result.total_amount} to ${verifiedWordsAmt} from Amount in Words: "${wordsMatch[1].trim()}"`);
+  // Total amount cross-verification with "Amount in words" if present
+  if (result.total_amount !== undefined && result.total_amount !== null) {
+    const wordsMatch = fullText.match(/(?:Amount\s*in\s*Words|In\s*words|Rupees\s*in\s*words)\s*[:.-]?\s*([A-Za-z\s-]+?)(?:only|\n|For|$)/i);
+    if (wordsMatch) {
+      const verifiedWordsAmt = wordsToNumber(wordsMatch[1]);
+      if (verifiedWordsAmt && Math.abs(result.total_amount - verifiedWordsAmt) > 100) {
         result.total_amount = verifiedWordsAmt;
       }
     }
-  }
-
-  // Tier 2 Backfill for Total Amount if null
-  if (result.total_amount === null || result.total_amount === undefined) {
-    const explicitTotal = fullText.match(/(?:(?:grand\s*)?total|amount\s*payable|net\s*payable|balance\s*due)\s*[:.-]?\s*(?:₹|rs\.?|inr)?\s*([0-9,]+(?:\.\d{2})?)/i);
-    if (explicitTotal) {
-      const cleaned = parseFloat(explicitTotal[1].replace(/,/g, ''));
-      if (!isNaN(cleaned)) result.total_amount = cleaned;
-    }
-  }
-
-  // 4. Ensure official Invoice Date is preferred over Order Date and normalized to YYYY-MM-DD
-  const invoiceDateMatch = fullText.match(/Invoice\s*Date\s*[:.-]?\s*([0-9]{1,2}[-/\s.][A-Za-z]{3,9}[-/\s.][0-9]{2,4}|[0-9]{1,2}[-/.][0-9]{1,2}[-/.][0-9]{2,4}|[A-Za-z]{3,9}\s+[0-9]{1,2},?\s+[0-9]{2,4})/i);
-  if (invoiceDateMatch) {
-    const iso = parseDateToISO(invoiceDateMatch[1]);
-    if (iso) result.date = iso;
-  } else if (result.date) {
-    const iso = parseDateToISO(result.date);
-    if (iso) result.date = iso;
   }
 
   return result;
 };
 
 /**
- * Fallback heuristic extractor when local Ollama is offline or starting up
+ * Fallback pattern-based extractor when Ollama is offline or unavailable
  */
-const fallbackExtract = (text, fields) => {
+const fallbackExtract = (text, fields = []) => {
   const extracted = {};
 
   for (const f of fields) {
     const key = f.key.toLowerCase();
     extracted[f.key] = null;
 
-    if (key.includes('gstin')) {
-      // 1. Look for explicit GST label (e.g. "GSTIN : ...", "GST Registration No : ...")
-      const labeledMatch = text.match(/(?:GSTIN|GST\s*Reg(?:istration)?(?:\s*No\.?)?|GST\s*No\.?)\s*[:.-]?\s*([0-9A-Z]{15})/i);
-      if (labeledMatch) {
-        const candidate = sanitizeGstin(labeledMatch[1].toUpperCase());
-        if (/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/.test(candidate)) {
-          extracted[f.key] = candidate;
-        }
-      }
-
-      // 2. If no labeled match, look for strict standalone GSTIN pattern
-      if (!extracted[f.key]) {
-        const strictMatch = text.match(/\b\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z21][A-Z\d]{1}\b/i);
-        if (strictMatch) {
-          const candidate = sanitizeGstin(strictMatch[0].toUpperCase());
-          if (/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/.test(candidate)) {
-            extracted[f.key] = candidate;
-          }
-        }
-      }
-    } else if (key.includes('invoice') || key.includes('number') || key.includes('inv')) {
-      // Prioritize explicit "Invoice Number : XYZ" over headers like "Tax Invoice/Bill"
-      const priorityMatch = text.match(/Invoice\s*(?:Number|No\.?|#)\s*[:.-]?\s*([A-Z0-9\/-]{3,30})/i);
-      if (priorityMatch) {
-        extracted[f.key] = priorityMatch[1].trim();
-      } else {
-        const match = text.match(/(?:inv|bill)\s*(?:no\.?|#)\s*[:.-]?\s*([A-Z0-9\/-]{3,30})/i);
-        if (match) extracted[f.key] = match[1].trim();
-      }
-    } else if (key.includes('total') || key.includes('amount') || key.includes('price')) {
-      // 1. Explicit Grand Total / Total / Amount Payable (ignoring Subtotal)
-      const explicitTotal = text.match(/(?:(?:grand\s*)?total|amount\s*payable|net\s*payable|balance\s*due)\s*[:.-]?\s*(?:₹|rs\.?|inr)?\s*([0-9,]+(?:\.\d{2})?)/i);
-      if (explicitTotal) {
-        const cleaned = parseFloat(explicitTotal[1].replace(/,/g, ''));
+    if (f.type === 'list') {
+      extracted[f.key] = [];
+    } else if (f.type === 'table') {
+      extracted[f.key] = [];
+    } else if (key.includes('gstin')) {
+      const match = text.match(/\b\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z2][A-Z\d]{1}\b/i);
+      if (match) extracted[f.key] = sanitizeGstin(match[0].toUpperCase());
+    } else if (key.includes('invoice') || key.includes('number') || key.includes('no')) {
+      const match = text.match(/(?:inv(?:oice)?|bill|po|register|patient\s*id)\s*(?:no\.?|#|number)?\s*[:.-]?\s*([A-Z0-9\/-]{3,30})/i);
+      if (match) extracted[f.key] = match[1].trim();
+    } else if (key.includes('total') || key.includes('amount') || key.includes('cost')) {
+      const match = text.match(/(?:(?:grand\s*)?total|amount\s*payable|net\s*payable|total\s*cost|total\s*marks|balance\s*due)\s*[:.-]?\s*(?:₹|rs\.?|inr)?\s*([0-9,]+(?:\.\d{2})?)/i);
+      if (match) {
+        const cleaned = parseFloat(match[1].replace(/,/g, ''));
         if (!isNaN(cleaned)) extracted[f.key] = cleaned;
-      } else {
-        const fallbackMatch = text.match(/(?<!sub)(?:total|amount|due)[^0-9\n]*([\d,]+(?:\.\d{2})?)/i);
-        if (fallbackMatch) {
-          const cleaned = parseFloat(fallbackMatch[1].replace(/,/g, ''));
-          if (!isNaN(cleaned)) extracted[f.key] = cleaned;
-        }
       }
     } else if (key.includes('date')) {
-      // 1. Explicit "Invoice Date : ..."
-      const invoiceDateMatch = text.match(/Invoice\s*Date\s*[:.-]?\s*([0-9]{1,2}[-/\s.][A-Za-z]{3,9}[-/\s.][0-9]{2,4}|[0-9]{1,2}[-/.][0-9]{1,2}[-/.][0-9]{2,4}|[A-Za-z]{3,9}\s+[0-9]{1,2},?\s+[0-9]{2,4})/i);
-      if (invoiceDateMatch) {
-        const iso = parseDateToISO(invoiceDateMatch[1]);
+      const match = text.match(/\b(\d{1,2}[-/\s.][A-Za-z]{3,9}[-/\s.]\d{2,4}|\d{4}[-/.Post]\d{2}[-/.Post]\d{2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})\b/i);
+      if (match) {
+        const iso = parseDateToISO(match[0]);
         if (iso) extracted[f.key] = iso;
       }
-
-      // 2. Generic Date label: "Date : 12 Nov 2026"
-      if (!extracted[f.key]) {
-        const genericDateMatch = text.match(/\bDate\s*[:.-]?\s*([0-9]{1,2}[-/\s.][A-Za-z]{3,9}[-/\s.][0-9]{2,4}|[0-9]{1,2}[-/.][0-9]{1,2}[-/.][0-9]{2,4}|[A-Za-z]{3,9}\s+[0-9]{1,2},?\s+[0-9]{2,4})/i);
-        if (genericDateMatch) {
-          const iso = parseDateToISO(genericDateMatch[1]);
-          if (iso) extracted[f.key] = iso;
-        }
-      }
-
-      // 3. Fallback standalone dates (with text month or numeric)
-      if (!extracted[f.key]) {
-        const textMonth = text.match(/\b(\d{1,2})[-/\s]+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[-/\s]+(\d{2,4})\b/i);
-        if (textMonth) {
-          const iso = parseDateToISO(textMonth[0]);
-          if (iso) extracted[f.key] = iso;
-        } else {
-          const numDate = text.match(/\b\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}\b/);
-          if (numDate) {
-            const iso = parseDateToISO(numDate[0]);
-            if (iso) extracted[f.key] = iso;
-          }
-        }
-      }
+    } else if (key.includes('name')) {
+      const match = text.match(/(?:supplier|vendor|student|patient|first\s*party)\s*(?:name)?\s*[:.-]?\s*([A-Za-z\s.]{3,50})/i);
+      if (match) extracted[f.key] = match[1].trim();
     }
   }
 
-  return postProcessExtracted(extracted, text);
+  return postProcessExtracted(extracted, text, { fields });
 };
 
 /**
- * Call Ollama with JSON mode and temperature 0 to extract template fields
+ * Call Ollama to classify document text into one of the candidate templates
+ * If confidence is below 0.5 or document matches none, returns Other
+ *
+ * @param {string} fullText - Document text (first 6000 chars)
+ * @param {Array<Object>} templates - List of candidate templates { _id, name, description, keywords }
+ * @returns {Promise<{ templateId: string|null, templateName: string, confidence: number }>}
  */
-const extractWithLlama = async (fullText, template) => {
-  const schema = buildSchema(template.fields);
+const classifyDocument = async (fullText, templates = []) => {
+  if (!templates || templates.length === 0) {
+    return { templateId: null, templateName: 'Other', confidence: 0.3 };
+  }
+
+  const sample = (fullText || '').slice(0, 6000).toLowerCase();
+
+  // 1. Heuristic Keyword Matching Score
+  let bestCandidate = null;
+  let maxScore = 0;
+
+  for (const t of templates) {
+    let score = 0;
+    const nameLower = t.name.toLowerCase();
+    if (sample.includes(nameLower)) score += 3;
+
+    if (Array.isArray(t.keywords)) {
+      for (const kw of t.keywords) {
+        if (kw && sample.includes(kw.toLowerCase())) {
+          score += 2;
+        }
+      }
+    }
+
+    if (score > maxScore) {
+      maxScore = score;
+      bestCandidate = t;
+    }
+  }
+
+  // 2. Ollama Classification
   const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
   const model = process.env.LLM_MODEL || 'llama3.2';
 
-  const fieldDescriptions = template.fields
-    .map((f) => `- ${f.key} (${f.type}): ${f.hint || f.label}`)
+  const candidatesList = templates
+    .map((t) => `- ID: ${t._id}\n  Name: ${t.name}\n  Description: ${t.description || ''}\n  Keywords: ${(t.keywords || []).join(', ')}`)
+    .join('\n\n');
+
+  const prompt = `Classify this document into EXACTLY ONE of the following candidate document types:
+
+${candidatesList}
+
+Document Sample:
+"""
+${sample.slice(0, 4000)}
+"""
+
+Return ONLY a JSON object with:
+- "templateId": the exact candidate ID string (or null if none fit)
+- "templateName": candidate name (or "Other")
+- "confidence": confidence between 0.0 and 1.0 (if below 0.5, use null for templateId)
+- "reason": one brief sentence`;
+
+  try {
+    const response = await fetch(`${ollamaUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: 'You are an expert document classifier. Return ONLY valid JSON.' },
+          { role: 'user', content: prompt }
+        ],
+        stream: false,
+        format: 'json',
+        options: { temperature: 0 }
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const content = JSON.parse(data.message?.content || '{}');
+
+      const conf = typeof content.confidence === 'number' ? content.confidence : 0.5;
+      const matched = templates.find(
+        (t) => t._id.toString() === String(content.templateId) || t.name.toLowerCase() === String(content.templateName).toLowerCase()
+      );
+
+      if (matched && conf >= 0.5) {
+        return {
+          templateId: matched._id.toString(),
+          templateName: matched.name,
+          confidence: parseFloat(conf.toFixed(2))
+        };
+      }
+    }
+  } catch (err) {
+    // Fall back to keyword score if Ollama is unavailable
+  }
+
+  // Keyword score fallback
+  if (bestCandidate && maxScore >= 2) {
+    const conf = Math.min(0.9, 0.5 + maxScore * 0.1);
+    return {
+      templateId: bestCandidate._id.toString(),
+      templateName: bestCandidate.name,
+      confidence: parseFloat(conf.toFixed(2))
+    };
+  }
+
+  return { templateId: null, templateName: 'Other', confidence: 0.3 };
+};
+
+/**
+ * Internal single-window extraction call
+ */
+const extractWindow = async (windowText, template) => {
+  const schema = buildSchema(template.fields || []);
+  const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+  const model = process.env.LLM_MODEL || 'llama3.2';
+
+  const fieldDescriptions = (template.fields || [])
+    .map((f) => {
+      let desc = `- ${f.key} (${f.type}): ${f.hint || f.label}`;
+      if (f.type === 'table' && Array.isArray(f.columns)) {
+        const cols = f.columns.map((c) => `${c.key} (${c.type})`).join(', ');
+        desc += ` [Table columns: ${cols}]`;
+      }
+      return desc;
+    })
     .join('\n');
 
-  const systemPrompt = `You are an expert financial document extractor.
-Extract structured data from business documents. Return ONLY a valid JSON object matching the requested schema. Never guess. If a field is not found in the text, use null.
-Important rules:
-1. In Indian invoices, the currency symbol '₹' is often OCR-misread as '3' or 'R' (e.g. '₹899' misread as '3899'). Cross-check Total Amount with 'Amount in Words' (e.g. 'Eight Hundred Ninety-nine only' = 899).
-2. For GSTIN: Look for 'GST Registration No', 'GSTIN', or 'GST No' (15-character Indian format: 2 digits + 5 letters + 4 digits + 1 letter + 1 char + Z + 1 char). If the document has no GSTIN, return null.
-3. For Date: Use the Invoice Date (not Order Date). Format: YYYY-MM-DD.`;
+  const systemPrompt = `You are an intelligent document extraction engine.
+Extract structured data from the document matching the schema.
+Return ONLY a valid JSON object matching the requested schema fields.
+Never invent or hallucinate data. If a field is not present in the document text, return null (or [] for lists and tables).
+For dates: format as YYYY-MM-DD whenever discernible.
+For numbers: return clean numeric values without currency symbols or commas.
+For tables: extract rows as an array of row objects containing the sub-column fields.`;
 
   const userPrompt = `Document Type: ${template.name}
 
-Extract these fields:
+Fields to extract:
 ${fieldDescriptions}
 
 Document Text:
 """
-${fullText.slice(0, 8000)}
+${windowText}
 """`;
-
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: userPrompt }
-  ];
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
@@ -408,17 +420,18 @@ ${fullText.slice(0, 8000)}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model,
-          messages,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
           stream: false,
           format: 'json',
           options: { temperature: 0 }
         }),
-        signal: AbortSignal.timeout(15000)
+        signal: AbortSignal.timeout(20000)
       });
 
-      if (!response.ok) {
-        throw new Error(`Ollama returned status ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Ollama status ${response.status}`);
 
       const json = await response.json();
       const rawContent = json.message?.content;
@@ -428,21 +441,115 @@ ${fullText.slice(0, 8000)}
       const validated = schema.safeParse(parsed);
 
       if (validated.success) {
-        return postProcessExtracted(validated.data, fullText);
+        return postProcessExtracted(validated.data, windowText, template);
       } else {
-        console.warn(`[Llama Extraction Warning] Attempt ${attempt}: Zod validation failed, retrying...`);
+        console.warn(`[Llama Validation Retry] Attempt ${attempt} schema check failed:`, validated.error.issues?.[0]?.message);
       }
     } catch (err) {
       if (attempt === 2) {
-        console.warn(`[Llama Offline / Fallback] Ollama error (${err.message}). Using pattern extractor.`);
+        console.warn(`[Llama Window Offline / Fallback] Ollama error (${err.message}). Using pattern extractor.`);
       }
     }
   }
 
-  return fallbackExtract(fullText, template.fields);
+  return fallbackExtract(windowText, template.fields);
+};
+
+/**
+ * Call Ollama with JSON mode to extract template fields.
+ * Supports windowed extraction (> 12000 chars) with 10000 window and 500 overlap.
+ * Scalars: first non-null. Tables: concatenated & deduplicated.
+ *
+ * @param {string} fullText - Document full text
+ * @param {Object} template - Template definition
+ * @returns {Promise<Object>} - Extracted fields JSON
+ */
+const extractWithLlama = async (fullText, template) => {
+  if (!template || !template.fields || template.fields.length === 0) {
+    return {};
+  }
+
+  const text = (fullText || '').trim();
+
+  // If text <= 12,000 chars, perform single extraction
+  if (text.length <= 12000) {
+    return extractWindow(text, template);
+  }
+
+  console.log(`[Windowed Extraction] Text length ${text.length} exceeds 12000 chars. Running windowed extraction...`);
+
+  // Windowed extraction: 10,000 chars with 500 char overlap
+  const WINDOW_SIZE = 10000;
+  const STEP = 9500;
+  const windowResults = [];
+
+  for (let start = 0; start < text.length; start += STEP) {
+    const chunk = text.slice(start, start + WINDOW_SIZE);
+    const windowExtracted = await extractWindow(chunk, template);
+    windowResults.push(windowExtracted);
+  }
+
+  // Merge results across windows
+  const merged = {};
+
+  for (const field of template.fields) {
+    const key = field.key;
+
+    if (field.type === 'table') {
+      // Concatenate and deduplicate rows
+      const allRows = [];
+      const seenRowSignatures = new Set();
+
+      for (const wr of windowResults) {
+        const rows = wr[key];
+        if (Array.isArray(rows)) {
+          for (const row of rows) {
+            const sig = JSON.stringify(row);
+            if (!seenRowSignatures.has(sig)) {
+              seenRowSignatures.add(sig);
+              allRows.push(row);
+            }
+          }
+        }
+      }
+      merged[key] = allRows;
+    } else if (field.type === 'list') {
+      // Concatenate unique list items
+      const allItems = [];
+      const seenItems = new Set();
+
+      for (const wr of windowResults) {
+        const items = wr[key];
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            const str = String(item).trim();
+            if (str && !seenItems.has(str.toLowerCase())) {
+              seenItems.add(str.toLowerCase());
+              allItems.push(str);
+            }
+          }
+        }
+      }
+      merged[key] = allItems;
+    } else {
+      // Scalars: first non-null/non-empty value across windows
+      let val = null;
+      for (const wr of windowResults) {
+        const v = wr[key];
+        if (v !== null && v !== undefined && v !== '') {
+          val = v;
+          break;
+        }
+      }
+      merged[key] = val;
+    }
+  }
+
+  return postProcessExtracted(merged, text, template);
 };
 
 module.exports = {
+  classifyDocument,
   extractWithLlama,
   buildSchema,
   fallbackExtract,

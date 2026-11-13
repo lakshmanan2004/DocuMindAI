@@ -14,7 +14,7 @@ Rules: Tier 1 is mandatory (M0 to M8). Prove every milestone with all 5 document
 | **M2** | **Upload, Library & Folders** | Multi-file upload (PDF, PNG, JPG, JPEG), file signature + size check, single-level folders, library table, authenticated file preview | ✅ Complete | • Upload 5 mixed files (PDF, PNG, JPG)<br>• Magic-byte signature & size validation<br>• Folder CRUD + documents move to "No folder"<br>• Filters (status, docType, search) verified<br>• Authenticated preview with orgId isolation<br>• Cascade delete removes file, pages, chunks, extraction |
 | **M3** | **Text Extraction & OCR** | `pdf-parse` per page, pdftoppm/tesseract OCR for pages < 30 chars, sharp cleanup for images, page-wise text stored | ✅ Complete | • Digital PDF, scanned PDF, and phone photo all extract page-wise text<br>• Tesseract.js image OCR verified (96% confidence)<br>• Text index on `documentpages`<br>• Corrupt files gracefully mark `failed` without crashing worker |
 | **M4** | **Template Engine & 5 Built-ins** | Generic field types (string, number, date, boolean, list, table), validation engine, 5 built-in templates seeded, template builder UI & test sandbox | ✅ Complete | • New org gets 5 templates<br>• Builder creates table fields and rules<br>• Duplicate template creates copy<br>• Test box tests text without saving<br>• Delete template in use blocked with 409 |
-| **M5** | **Classification, Extraction & Review** | Auto-classification via Llama (with fallback to Other), windowed extraction (schema-driven), rule evaluation, confidence scoring, side-by-side Review UI | ⏳ Pending | • All 5 document types classified & extracted<br>• Table fields render editable grids<br>• Invalid GSTIN / mismatched sums flagged<br>• Manual corrections persist |
+| **M5** | **Classification, Extraction & Review** | Auto-classification via Llama (with fallback to Other), windowed extraction (schema-driven), rule evaluation, confidence scoring, side-by-side Review UI | ✅ Complete | • All 5 document types classified & extracted (Invoice, Agreement, Marksheet, Lab Report, PO)<br>• Table fields render editable grids<br>• Windowed extraction for >12k chars verified<br>• Manual corrections persist & approval transitions to 'reviewed' |
 | **M6** | **Chat (RAG) & Hybrid Search** | Scoped chat (document, folder, library), vector search with orgId filter, exact fallback sentence, sources with page jumps, hybrid search page | ⏳ Pending | • Correct answer with citations<br>• Exact fallback: "I could not find this in your documents."<br>• Zero cross-tenant leaks |
 | **M7** | **Summaries & Multi-Sheet Export** | Short, Detailed, Executive summaries; chunked summary for long docs; Excel export with separate sheets for table fields; CSV export | ⏳ Pending | • 3 summary formats working<br>• Excel contains multi-sheet table data<br>• Grouping by template works |
 | **M8** | **Dashboard, Audit & Hardening** | Metrics dashboard, audit log table with filters, settings (theme + Lite mode), empty/loading/error states, seed script, README | ⏳ Pending | • Fresh install & seed works<br>• Full audit coverage<br>• 60fps scrolling & fast response |
@@ -31,15 +31,15 @@ Rules: Tier 1 is mandatory (M0 to M8). Prove every milestone with all 5 document
 
 ## ✅ Final Spec Checklist (Section 14)
 
-- [ ] Core: No invoice-specific or GST-specific code outside template data and `validate.js` rule functions
+- [x] Core: No invoice-specific or GST-specific code outside template data and `validate.js` rule functions
 - [x] Core: Five built-in templates seeded per organization; custom template created in UI works end-to-end
-- [ ] Core: Table fields supported in extraction, review grid, export
+- [x] Core: Table fields supported in extraction, review grid, export
 - [x] Auth: Register organization, login, users, four roles enforced on API and UI
 - [x] Docs: Multi-upload, library filters, folders, preview, delete, reprocess
 - [x] AI: Text extraction for digital PDF, scanned PDF, image; page-wise
-- [ ] AI: Auto-classification with Change type; Other fallback
-- [ ] AI: Extraction with schema validation, retry, rules, confidence, source page
-- [ ] Review: Side-by-side review, low-confidence markers, issues panel, save, approve
+- [x] AI: Auto-classification with Change type; Other fallback
+- [x] AI: Extraction with schema validation, retry, rules, confidence, source page
+- [x] Review: Side-by-side review, low-confidence markers, issues panel, save, approve
 - [ ] Chat: Document, folder and library scope; citations; exact not-found sentence
 - [ ] Search: Keyword plus semantic search page
 - [ ] Summary: Short, detailed, executive; long document handling

@@ -1,19 +1,24 @@
 const path = require('path');
-const { Document, DocumentPage, Template, Extraction } = require('../models');
+const { Document, DocumentPage, Template, Extraction, Chunk } = require('../models');
 const { extractDocumentText } = require('../services/text');
-const { extractWithLlama } = require('../services/llm');
-const { validateExtraction } = require('../services/validate');
+const { extractWithLlama, classifyDocument } = require('../services/llm');
+const { validateRules } = require('../services/validate');
 const { scoreConfidence } = require('../services/confidence');
+const { chunkDocumentPages } = require('../services/chunk');
+const { embedTexts } = require('../services/embed');
 const { uploadDirectory } = require('../middleware/upload');
+const { genericTemplate } = require('../seed/templates');
 
 /**
  * End-to-end processing pipeline for a single document:
  * 1. Status -> 'processing'
  * 2. Extract page text (OCR or PDF Parse) -> save DocumentPage records
- * 3. Structured LLM extraction against Template (Invoice, Agreement, etc.)
- * 4. Business rule validation (GSTIN format, line items, duplicate invoices)
- * 5. Confidence scoring (0 to 1) and source snippet localization
- * 6. Status -> 'needs_review' (if low confidence or issues) or 'completed'
+ * 3. Auto-classify document type (or honor user-selected templateId)
+ * 4. Chunk & Embed document pages into Atlas vector search (for RAG)
+ * 5. Structured LLM extraction against template fields (windowed if > 12k chars)
+ * 6. Generic business rule validation (validateRules)
+ * 7. Confidence scoring and source page localization (scoreConfidence)
+ * 8. Status -> 'needs_review' (if low confidence or errors) or 'completed'
  *
  * @param {string} documentId - MongoDB ID of the document
  */
@@ -50,28 +55,89 @@ const processDocument = async (documentId) => {
     }
 
     doc.pageCount = extractedPages.length;
+    const fullText = extractedPages.map((p) => p.text).join('\n\n');
 
-    // 3. Template & LLM Extraction (Phase 3)
+    // 3. Chunk & Embed Document Pages for Vector Search (Phase 4 RAG)
+    try {
+      const pageChunks = chunkDocumentPages(extractedPages, 800, 120);
+      if (pageChunks.length > 0) {
+        console.log(`[Queue Worker] Generating embeddings for ${pageChunks.length} chunks of document: ${doc.originalName}`);
+        const chunkTexts = pageChunks.map((c) => c.text);
+        const embeddings = await embedTexts(chunkTexts);
+
+        // Remove old chunks if reprocessing
+        await Chunk.deleteMany({ documentId: doc._id });
+
+        const chunkRecords = pageChunks.map((c, idx) => ({
+          orgId: doc.orgId,
+          documentId: doc._id,
+          pageNumber: c.pageNumber,
+          chunkIndex: c.chunkIndex,
+          text: c.text,
+          embedding: embeddings[idx]
+        }));
+
+        await Chunk.insertMany(chunkRecords);
+        console.log(`[Queue Worker] Saved ${chunkRecords.length} vector chunks to Atlas for: ${doc.originalName}`);
+      }
+    } catch (embedError) {
+      console.warn(`[Queue Worker] Warning: Failed to embed document chunks for ${doc.originalName}:`, embedError.message);
+    }
+
+    // 4. Auto-Classification or User Selected Template
     let template = null;
     if (doc.templateId) {
-      template = await Template.findById(doc.templateId);
+      template = await Template.findOne({ _id: doc.templateId, orgId: doc.orgId });
     }
+
     if (!template) {
-      // Default to the first available template in the organization (e.g. Invoice)
-      template = await Template.findOne({ orgId: doc.orgId });
+      // Auto-classify document against all templates in the organization
+      const orgTemplates = await Template.find({ orgId: doc.orgId });
+      const classification = await classifyDocument(fullText, orgTemplates);
+      console.log(`[Queue Worker] Auto-classification result: ${classification.templateName} (${classification.confidence})`);
+
+      doc.classificationConfidence = classification.confidence;
+
+      if (classification.templateId) {
+        template = orgTemplates.find((t) => t._id.toString() === classification.templateId);
+        if (template) {
+          doc.templateId = template._id;
+          doc.docType = template.name;
+        }
+      }
+
+      // If confidence < 0.5 or no match, fall back to 'Other' template
+      if (!template) {
+        let otherTmpl = await Template.findOne({ orgId: doc.orgId, name: 'Other' });
+        if (!otherTmpl) {
+          otherTmpl = await Template.create({
+            orgId: doc.orgId,
+            ...genericTemplate,
+            createdBy: doc.uploadedBy
+          });
+        }
+        template = otherTmpl;
+        doc.templateId = otherTmpl._id;
+        doc.docType = 'Other';
+      }
+    } else {
+      doc.docType = template.name;
     }
 
-    if (template && template.fields.length > 0) {
-      console.log(`[Queue Worker] Applying template '${template.name}' for document ${doc.originalName}`);
-      const fullText = extractedPages.map((p) => p.text).join('\n\n');
+    // 5. Structured LLM Extraction
+    if (template && template.fields && template.fields.length > 0) {
+      console.log(`[Queue Worker] Extracting fields for template '${template.name}' on ${doc.originalName}`);
 
-      // AI extraction via Ollama (or resilient pattern extractor)
       const rawExtracted = await extractWithLlama(fullText, template);
 
-      // Business rule validation
-      const validationIssues = await validateExtraction(rawExtracted, doc.orgId, doc._id);
+      // 6. Generic Business Rule Validation
+      const validationIssues = await validateRules(rawExtracted, template.rules || [], {
+        Document,
+        orgId: doc.orgId,
+        documentId: doc._id
+      });
 
-      // Score confidence and link to source page
+      // 7. Score Confidence & Source Snippet Localization
       const scoredFields = scoreConfidence(
         template.fields,
         rawExtracted,
@@ -91,23 +157,23 @@ const processDocument = async (documentId) => {
           reviewedBy: null,
           reviewedAt: null
         },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       );
 
-      // Flag for review if a required field is missing, an extracted field has low confidence, or validation failed
+      // 8. Document Status Determination
+      const hasErrors = validationIssues.some((i) => i.severity === 'error');
       const hasLowConfidence = scoredFields.some((f) => {
         const fieldDef = template.fields.find((tf) => tf.key === f.key);
         const isRequired = fieldDef ? fieldDef.required : false;
-        // If an optional field (e.g. GSTIN on non-tax bills) is absent, do not penalize the document
         if (!isRequired && (f.value === null || f.value === undefined || f.value === '')) {
           return false;
         }
-        return f.confidence < 0.7;
+        return f.confidence < 0.60;
       });
 
-      if (hasLowConfidence || validationIssues.length > 0) {
+      if (hasErrors || hasLowConfidence) {
         doc.status = 'needs_review';
-        console.log(`[Queue Worker] Flagged document as 'needs_review' (issues: ${validationIssues.length})`);
+        console.log(`[Queue Worker] Document flagged as 'needs_review' (errors: ${hasErrors}, low confidence: ${hasLowConfidence})`);
       } else {
         doc.status = 'completed';
       }

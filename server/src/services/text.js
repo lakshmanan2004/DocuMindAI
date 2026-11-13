@@ -146,6 +146,18 @@ const extractDocumentText = async (filePath, mimeType) => {
     }
   }
 
+  // 3. Plain Text format support
+  if (mimeType === 'text/plain' || (typeof mimeType === 'string' && mimeType.includes('text'))) {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    return [
+      {
+        pageNumber: 1,
+        text: cleanExtractedText(raw),
+        ocrConfidence: 100
+      }
+    ];
+  }
+
   throw new Error(`Unsupported document MIME type: ${mimeType}`);
 };
 

@@ -3,7 +3,7 @@ const fs = require('fs');
 const { Document, DocumentPage, Extraction, Template, Chunk, User, Folder } = require('../models');
 const { uploadDirectory } = require('../middleware/upload');
 const { addDocumentJob } = require('../queues/docQueue');
-const { validateExtraction } = require('../services/validate');
+const { validateRules } = require('../services/validate');
 const { recordAudit } = require('../services/audit');
 const { validateFileSignature } = require('../utils/fileSignature');
 
@@ -285,7 +285,7 @@ const getDocumentExtraction = async (req, res, next) => {
  */
 const saveExtractionCorrections = async (req, res, next) => {
   try {
-    const { fields, data } = req.body;
+    const { fields } = req.body;
 
     const extraction = await Extraction.findOne({
       documentId: req.params.id,
@@ -296,24 +296,42 @@ const saveExtractionCorrections = async (req, res, next) => {
       return res.status(404).json({ message: 'Extraction not found' });
     }
 
-    const updatedData = data || {};
     if (fields && Array.isArray(fields)) {
-      for (const f of fields) {
-        updatedData[f.key] = f.value;
+      for (const updatedField of fields) {
+        const existing = extraction.fields.find((f) => f.key === updatedField.key);
+        if (existing) {
+          existing.value = updatedField.value;
+          existing.edited = true;
+          existing.confidence = 1.0;
+        } else {
+          extraction.fields.push({
+            key: updatedField.key,
+            label: updatedField.label || updatedField.key,
+            type: updatedField.type || 'string',
+            value: updatedField.value,
+            confidence: 1.0,
+            sourcePage: 1,
+            sourceText: '',
+            edited: true
+          });
+        }
       }
     }
 
-    extraction.data = { ...extraction.data, ...updatedData };
-    if (!extraction.meta) extraction.meta = {};
-
-    for (const key of Object.keys(updatedData)) {
-      extraction.meta[key] = {
-        ...(extraction.meta[key] || {}),
-        edited: true,
-        confidence: 1.0
-      };
+    // Re-evaluate template validation rules with corrected data
+    const tmpl = await Template.findById(extraction.templateId);
+    const valuesMap = {};
+    for (const f of extraction.fields) {
+      valuesMap[f.key] = f.value;
     }
 
+    const refreshedIssues = await validateRules(valuesMap, tmpl?.rules || [], {
+      Document,
+      orgId: req.user.orgId,
+      documentId: req.params.id
+    });
+
+    extraction.validationIssues = refreshedIssues;
     await extraction.save();
 
     await recordAudit({
@@ -324,7 +342,7 @@ const saveExtractionCorrections = async (req, res, next) => {
       action: 'edit',
       targetType: 'extraction',
       targetId: req.params.id,
-      details: { fields: Object.keys(updatedData) }
+      details: { fieldCount: fields?.length || 0 }
     });
 
     return res.status(200).json({

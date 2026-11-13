@@ -178,9 +178,24 @@ const builtInTemplates = [
         hint: 'Register Number, Registration No, Roll No, Enrollment No, PRN, Hall Ticket No'
       },
       { key: 'institution', label: 'Institution / College', type: 'string' },
-      { key: 'course', label: 'Course / Degree', type: 'string' },
-      { key: 'semester', label: 'Semester', type: 'string' },
-      { key: 'exam_session', label: 'Exam session', type: 'string' },
+      {
+        key: 'course',
+        label: 'Course / Degree',
+        type: 'string',
+        hint: 'Degree or course program e.g. B.Sc. (PCM), B.Tech, Bachelor of Science, Class XII'
+      },
+      {
+        key: 'semester',
+        label: 'Semester',
+        type: 'string',
+        hint: 'Semester or Year e.g. First Year, 5th Semester, Sem V'
+      },
+      {
+        key: 'exam_session',
+        label: 'Exam session',
+        type: 'string',
+        hint: 'Exam session/month-year if mentioned e.g. Nov-Dec 2026, otherwise null'
+      },
       {
         key: 'subjects',
         label: 'Subjects',
@@ -256,13 +271,25 @@ const builtInTemplates = [
       },
       { key: 'age', label: 'Age', type: 'string' },
       { key: 'gender', label: 'Gender', type: 'string' },
-      { key: 'report_date', label: 'Report date', type: 'date', required: true },
+      {
+        key: 'report_date',
+        label: 'Report date',
+        type: 'date',
+        required: true,
+        hint: 'Date report was issued, approved, collected or printed in YYYY-MM-DD. Never patient Date of Birth (DOB)'
+      },
       { key: 'referring_doctor', label: 'Referring doctor', type: 'string' },
-      { key: 'lab_name', label: 'Laboratory / Hospital name', type: 'string' },
+      {
+        key: 'lab_name',
+        label: 'Laboratory / Hospital name',
+        type: 'string',
+        hint: 'Laboratory, Diagnostic Centre, or Hospital facility name. Never doctor qualifications like MD Path, MBBS, M.D.'
+      },
       {
         key: 'tests',
         label: 'Tests',
         type: 'table',
+        hint: 'Table of laboratory test parameters. Only include tests that appear in the document text',
         columns: [
           { key: 'test_name', label: 'Test name', type: 'string' },
           { key: 'value', label: 'Value', type: 'string' },

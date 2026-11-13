@@ -252,6 +252,148 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
     }
   }
 
+  // 4. Lab Report specifics
+  if (result.patient_id) {
+    const uuidMatch = fullText.match(/\b([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\b/);
+    if (uuidMatch) {
+      result.patient_id = uuidMatch[1];
+    } else {
+      result.patient_id = result.patient_id.split(/(?:phone|mobile|tel|age|sex|gender|date)/i)[0].trim();
+    }
+  }
+
+  // Doctor qualification vs lab_name
+  const isDoctorDegree = (name) => {
+    if (!name || typeof name !== 'string') return true;
+    const s = name.trim();
+    return s.length < 3 || /^(?:md|mbbs|m\.d\.?|dcp|dnb|phd|pathology|pathologist|doctor|dr\.?)\b/i.test(s) || /^(?:dr\.|dr\s)/i.test(s);
+  };
+
+  if (isDoctorDegree(result.lab_name)) {
+    const knownLabMatch = fullText.match(/\b(Sterling\s*Accuris(?:\s*Pathology(?:\s*Laboratory)?)?|Dr\.?\s*Lal\s*PathLabs|Metropolis(?:\s*Healthcare)?|Apollo(?:\s*Diagnostics|\s*Hospital)?|Thyrocare|SRL\s*Diagnostics|Suburban\s*Diagnostics|Max\s*Healthcare|Sample\s*Lab)\b/i);
+    if (knownLabMatch) {
+      result.lab_name = knownLabMatch[1].trim();
+    } else {
+      const facilityMatch = fullText.match(/^([A-Za-z0-9\s.,&-]{3,50}(?:Laboratory|Laboratories|Diagnostics|Hospital|Clinic|Health\s*Centre|Health\s*Care))/im);
+      if (facilityMatch && !isDoctorDegree(facilityMatch[1])) {
+        result.lab_name = facilityMatch[1].trim();
+      } else if (result.lab_name && isDoctorDegree(result.lab_name)) {
+        result.lab_name = null;
+      }
+    }
+  }
+
+  // Report Date vs Patient DOB
+  if (result.report_date) {
+    const isLikelyDob = (dateStr) => {
+      const y = parseInt(String(dateStr).slice(0, 4), 10);
+      return !isNaN(y) && y <= 2010;
+    };
+
+    const approvedOrReportedMatch = fullText.match(/(?:Approved\s*on|Reported(?:\s*on|\s*date)?|Collected\s*on|Registration\s*on|Report\s*date|Date\s*of\s*report|Printed\s*on)\s*[:.-]?\s*([0-9A-Za-z\s.,/-]{8,25})/i);
+    if (approvedOrReportedMatch) {
+      const parsedApproved = parseDateToISO(approvedOrReportedMatch[1]);
+      if (parsedApproved && (isLikelyDob(result.report_date) || parsedApproved !== result.report_date)) {
+        result.report_date = parsedApproved;
+      }
+    } else if (isLikelyDob(result.report_date)) {
+      const allDates = fullText.match(/\b(\d{1,2}[-/\s.][A-Za-z]{3,9}[-/\s.]\d{2,4}|\d{4}[-/.Post]\d{2}[-/.Post]\d{2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})\b/gi) || [];
+      for (const d of allDates) {
+        const iso = parseDateToISO(d);
+        if (iso && parseInt(iso.slice(0, 4), 10) >= 2015) {
+          result.report_date = iso;
+          break;
+        }
+      }
+    }
+  }
+
+  // Tests table grounding & value/unit splitting
+  if (Array.isArray(result.tests) && result.tests.length > 0) {
+    const lowerDoc = fullText.toLowerCase();
+    result.tests = result.tests
+      .filter((t) => {
+        if (!t || !t.test_name || typeof t.test_name !== 'string') return false;
+        const name = t.test_name.trim();
+        if (name.length < 2) return false;
+        const nameTokens = name.toLowerCase().split(/\s+/).filter((w) => w.length >= 3);
+        const appearsInDoc = nameTokens.length > 0 && nameTokens.some((token) => lowerDoc.includes(token));
+        return appearsInDoc;
+      })
+      .map((t) => {
+        let valStr = String(t.value || '').trim();
+        let unitStr = String(t.unit || '').trim();
+        if (valStr) {
+          const unitSplit = valStr.match(/^([0-9.,><=-]+)\s*([A-Za-z/μ%^0-9*-]+(?:\s*[A-Za-z/μ%^0-9*-]+)*)$/);
+          if (unitSplit) {
+            valStr = unitSplit[1].trim();
+            if (!unitStr) unitStr = unitSplit[2].trim();
+          }
+        }
+        return {
+          test_name: t.test_name.trim(),
+          value: valStr || null,
+          unit: unitStr || null,
+          reference_range: t.reference_range ? String(t.reference_range).trim() : null,
+          flag: t.flag ? String(t.flag).trim() : null
+        };
+      });
+  }
+
+  // 5. Mark Sheet specifics
+  if (!result.course || result.course.length < 3 || /^(?:not\s*specified|null|n\/a)$/i.test(result.course)) {
+    const courseMatch = fullText.match(/\b(Bachelor\s*of\s*[A-Za-z\s]+|Master\s*of\s*[A-Za-z\s]+|B\.?Sc\.?(?:\s*\([A-Za-z\s]+\))?|B\.?Tech\.?(?:\s*\([A-Za-z\s]+\))?|B\.?E\.?|B\.?Com\.?|M\.?Sc\.?|M\.?Tech\.?|Diploma\s*in\s*[A-Za-z\s]+|Class\s*(?:X|XII|10th|12th))\b/i);
+    if (courseMatch) result.course = courseMatch[0].trim();
+  } else {
+    result.course = result.course.replace(/~.*$/, '').trim();
+    const pcmMatch = fullText.match(/B\.?Sc\.?\s*\([A-Za-z\s]+\)/i);
+    if (pcmMatch && !result.course.includes('(')) {
+      result.course += ` - ${pcmMatch[0]}`;
+    }
+  }
+
+  if (!result.semester || /^(?:not\s*specified|null|n\/a)$/i.test(result.semester)) {
+    const semMatch =
+      fullText.match(/\b(First|Second|Third|Fourth|Final|\d+(?:st|nd|rd|th)?)\s*Year\b/i) ||
+      fullText.match(/\b(Semester\s*[-:]?\s*(?:[IVXLCDM\d]+|\d+(?:st|nd|rd|th)?)|Sem\s*[-:]?\s*[IVXLCDM\d]+)\b/i);
+    if (semMatch) {
+      result.semester = semMatch[0].trim();
+    } else {
+      result.semester = null;
+    }
+  }
+
+  if (result.exam_session) {
+    const sess = String(result.exam_session).trim();
+    if (
+      /^(?:not\s*specified|null|n\/a|none|undefined)$/i.test(sess) ||
+      !/(?:\d{4}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|summer|winter|spring|autumn)/i.test(sess)
+    ) {
+      result.exam_session = null;
+    }
+  } else {
+    const sessionMatch = fullText.match(/(?:Exam(?:\s*session)?|Session)\s*[:.-]?\s*([A-Za-z]{3,9}(?:-[A-Za-z]{3,9})?\s*\d{4}|\d{4}-\d{2,4})/i);
+    if (sessionMatch) {
+      result.exam_session = sessionMatch[1].trim();
+    } else {
+      result.exam_session = null;
+    }
+  }
+
+  if (Array.isArray(result.subjects) && result.subjects.length > 0) {
+    const lowerDoc = fullText.toLowerCase();
+    result.subjects = result.subjects.filter((s) => {
+      if (!s) return false;
+      const name = String(s.name || '').trim();
+      const code = String(s.code || '').trim();
+      if (name.toLowerCase().includes('jee advanced')) return false;
+      const hasNameInText = name.length >= 3 && lowerDoc.includes(name.toLowerCase());
+      const hasCodeInText = code.length >= 2 && lowerDoc.includes(code.toLowerCase());
+      const hasMarks = s.marks !== null && s.marks !== undefined && !isNaN(Number(s.marks));
+      return (hasNameInText || hasCodeInText) && (hasMarks || s.grade);
+    });
+  }
+
   return result;
 };
 
@@ -636,9 +778,23 @@ const extractWindow = async (windowText, template) => {
     .map((f) => {
       let desc = `- ${f.key} (${f.type}): ${f.hint || f.label}`;
 
-      // Enriched context for identifier fields
+      // Enriched context for specific domain fields
       if (f.key === 'patient_id') {
-        desc += ' [Look for Registration ID, Patient ID, UHID, MRN, Sample ID, Barcode, or Patient No; join any split multi-line ID text into one continuous string]';
+        desc += ' [Look for Registration ID, Patient ID, UHID, MRN, Sample ID, Barcode, or Patient No; exclude any following phone numbers]';
+      } else if (f.key === 'lab_name') {
+        desc += ' [Facility/Hospital/Laboratory institution name e.g. Sterling Accuris Pathology Laboratory, Sample Lab. NEVER return doctor degrees or titles like MD Path, MBBS, M.D., DCP, Pathologist]';
+      } else if (f.key === 'report_date') {
+        desc += ' [Date report was approved, issued, collected or printed in YYYY-MM-DD. NEVER use patient Date of Birth (DOB) or age]';
+      } else if (f.key === 'tests') {
+        desc += ' [Extract ONLY tests that appear in the document text with their actual values and units. Do NOT hallucinate random tests]';
+      } else if (f.key === 'course') {
+        desc += ' [Degree program e.g. Bachelor of Science, B.Sc. (PCM), B.Tech, B.E., Diploma, Class XII]';
+      } else if (f.key === 'semester') {
+        desc += ' [Semester or Year e.g. First Year, 1st Year, 5th Semester, Sem V]';
+      } else if (f.key === 'exam_session') {
+        desc += ' [Exam session e.g. Nov-Dec 2026. If not mentioned on mark sheet, return null. Do NOT return "Not specified"]';
+      } else if (f.key === 'subjects') {
+        desc += ' [Extract ONLY actual subjects with their marks from the marks table. Do not guess names from random OCR letters]';
       } else if (f.key === 'register_number') {
         desc += ' [Look for Register Number, Registration No, Roll No, Enrollment No, PRN, Hall Ticket No]';
       } else if (f.key === 'invoice_number') {

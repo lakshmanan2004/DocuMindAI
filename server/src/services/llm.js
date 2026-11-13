@@ -2,10 +2,11 @@ const { z } = require('zod');
 
 /**
  * Build dynamic Zod validation schema from template fields definition
+ * Supports: string, number, date, boolean, list, table (with sub-columns)
  * @param {Array<Object>} fields - Template fields
  * @returns {z.ZodObject}
  */
-const buildSchema = (fields) => {
+const buildSchema = (fields = []) => {
   const shape = {};
   for (const f of fields) {
     if (f.type === 'number') {
@@ -19,6 +20,48 @@ const buildSchema = (fields) => {
         }
         return null;
       }, z.number().nullable().optional());
+    } else if (f.type === 'boolean') {
+      shape[f.key] = z.preprocess((val) => {
+        if (val === null || val === undefined || val === '') return null;
+        if (typeof val === 'boolean') return val;
+        if (typeof val === 'string') return val.toLowerCase() === 'true' || val === '1';
+        return Boolean(val);
+      }, z.boolean().nullable().optional());
+    } else if (f.type === 'list') {
+      shape[f.key] = z.preprocess((val) => {
+        if (val === null || val === undefined) return [];
+        if (Array.isArray(val)) return val.map((v) => String(v).trim());
+        if (typeof val === 'string') return val.split('\n').map((s) => s.trim()).filter(Boolean);
+        return [];
+      }, z.array(z.string()).nullable().optional());
+    } else if (f.type === 'table') {
+      const colShape = {};
+      if (Array.isArray(f.columns)) {
+        for (const col of f.columns) {
+          if (col.type === 'number') {
+            colShape[col.key] = z.preprocess((v) => {
+              if (v === null || v === undefined || v === '') return null;
+              if (typeof v === 'number') return isNaN(v) ? null : v;
+              if (typeof v === 'string') {
+                const cleaned = v.replace(/[^0-9.-]/g, '');
+                const num = parseFloat(cleaned);
+                return isNaN(num) ? null : num;
+              }
+              return null;
+            }, z.number().nullable().optional());
+          } else {
+            colShape[col.key] = z.preprocess((v) => {
+              if (v === null || v === undefined) return null;
+              return String(v).trim();
+            }, z.string().nullable().optional());
+          }
+        }
+      }
+      const rowSchema = z.object(colShape).passthrough();
+      shape[f.key] = z.preprocess((val) => {
+        if (!Array.isArray(val)) return [];
+        return val;
+      }, z.array(rowSchema).nullable().optional());
     } else {
       shape[f.key] = z.preprocess((val) => {
         if (val === null || val === undefined) return null;
@@ -26,7 +69,7 @@ const buildSchema = (fields) => {
       }, z.string().nullable().optional());
     }
   }
-  return z.object(shape);
+  return z.object(shape).passthrough();
 };
 
 const MONTH_NAMES = {

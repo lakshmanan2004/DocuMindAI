@@ -1,0 +1,61 @@
+:root {
+  --bg: #F2F2F7;
+  --surface: #FFFFFF;
+  --text: #1C1C1E;
+  --muted: #6B7280;
+  --accent: #007AFF;
+  --success: #34C759;
+  --warning: #FF9500;
+  --danger: #FF3B30;
+  --glass-bg: rgb(255 255 255 / 0.62);
+  --glass-border: rgb(255 255 255 / 0.5);
+  --shadow: 0 8px 30px rgb(0 0 0 / 0.08);
+  --radius-card: 20px;
+  --radius-control: 12px;
+  --radius-modal: 24px;
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.dark {
+  --bg: #000000;
+  --surface: #1C1C1E;
+  --text: #F2F2F7;
+  --glass-bg: rgb(28 28 30 / 0.6);
+  --glass-border: rgb(255 255 255 / 0.08);
+}
+
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+}
+
+/* Lite mode and reduced transparency: solid, no blur */
+.lite .glass {
+  background: var(--surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

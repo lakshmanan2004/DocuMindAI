@@ -1,0 +1,53 @@
+# DocuMind AI — Implementation Progress
+
+Master Build Specification (A to Z) Execution Tracker.
+Rules: Tier 1 is mandatory (M0 to M8). Prove every milestone with all 5 document types. Tenant isolation on every query.
+
+---
+
+## 📊 Milestone Status
+
+| Milestone | Title | Scope | Status | Acceptance Tests |
+| :--- | :--- | :--- | :--- | :--- |
+| **M0** | **Setup & Foundation** | Repos, env, Mongo Atlas, Redis, Ollama, health route, seed skeleton, design system (tokens, glass, Lite mode, base UI, `/ui` demo) | ✅ Complete | • Ollama responds (`llama3.2`, `nomic-embed-text`)<br>• `/health` returns 200 OK<br>• Redis verified / resilient fallback active<br>• Embedding length 768 recorded in DECISIONS.md<br>• `/ui` showcases all base components in Light, Dark, Lite modes |
+| **M1** | **Authentication, Org & Users** | Register org + clone 5 built-in templates, JWT with `id, orgId, role`, 4 RBAC roles (Admin, Employee, Reviewer, Viewer), deactivated user check, rate limiting | ⏳ Pending | • 2 orgs isolated<br>• 401 without token<br>• 403 on forbidden role<br>• Deactivated user blocked |
+| **M2** | **Upload, Library & Folders** | Multi-file upload (PDF, PNG, JPG, JPEG), file signature + size check, single-level folders, library table, authenticated file preview | ⏳ Pending | • 5 mixed files uploaded<br>• Filters and preview work<br>• Bad file rejected<br>• Delete removes doc, pages, chunks, extraction |
+| **M3** | **Text Extraction & OCR** | `pdf-parse` per page, pdftoppm/tesseract OCR for pages < 30 chars, sharp cleanup for images, page-wise text stored | ⏳ Pending | • Digital PDF, scanned PDF, phone photo all produce page-wise text<br>• Corrupt file marks `failed` gracefully |
+| **M4** | **Template Engine & 5 Built-ins** | Generic field types (string, number, date, boolean, list, table), validation engine, 5 built-in templates seeded, template builder UI & test sandbox | ⏳ Pending | • New org gets 5 templates<br>• Builder creates table fields and rules<br>• Test box tests text without saving |
+| **M5** | **Classification, Extraction & Review** | Auto-classification via Llama (with fallback to Other), windowed extraction (schema-driven), rule evaluation, confidence scoring, side-by-side Review UI | ⏳ Pending | • All 5 document types classified & extracted<br>• Table fields render editable grids<br>• Invalid GSTIN / mismatched sums flagged<br>• Manual corrections persist |
+| **M6** | **Chat (RAG) & Hybrid Search** | Scoped chat (document, folder, library), vector search with orgId filter, exact fallback sentence, sources with page jumps, hybrid search page | ⏳ Pending | • Correct answer with citations<br>• Exact fallback: "I could not find this in your documents."<br>• Zero cross-tenant leaks |
+| **M7** | **Summaries & Multi-Sheet Export** | Short, Detailed, Executive summaries; chunked summary for long docs; Excel export with separate sheets for table fields; CSV export | ⏳ Pending | • 3 summary formats working<br>• Excel contains multi-sheet table data<br>• Grouping by template works |
+| **M8** | **Dashboard, Audit & Hardening** | Metrics dashboard, audit log table with filters, settings (theme + Lite mode), empty/loading/error states, seed script, README | ⏳ Pending | • Fresh install & seed works<br>• Full audit coverage<br>• 60fps scrolling & fast response |
+
+---
+
+## 🎯 Tier 2 (Post Tier-1 Acceptance)
+
+- [ ] **M9**: Ask Data (Structured natural language queries on extracted data)
+- [ ] **M10**: Document Comparison (Side-by-side field and text paragraph diff)
+- [ ] **M11**: Report Generation (PDF reports with pdfkit)
+
+---
+
+## ✅ Final Spec Checklist (Section 14)
+
+- [ ] Core: No invoice-specific or GST-specific code outside template data and `validate.js` rule functions
+- [ ] Core: Five built-in templates seeded per organization; custom template created in UI works end-to-end
+- [ ] Core: Table fields supported in extraction, review grid, export
+- [ ] Auth: Register organization, login, users, four roles enforced on API and UI
+- [ ] Docs: Multi-upload, library filters, folders, preview, delete, reprocess
+- [ ] AI: Text extraction for digital PDF, scanned PDF, image; page-wise
+- [ ] AI: Auto-classification with Change type; Other fallback
+- [ ] AI: Extraction with schema validation, retry, rules, confidence, source page
+- [ ] Review: Side-by-side review, low-confidence markers, issues panel, save, approve
+- [ ] Chat: Document, folder and library scope; citations; exact not-found sentence
+- [ ] Search: Keyword plus semantic search page
+- [ ] Summary: Short, detailed, executive; long document handling
+- [ ] Export: Excel (with table sheets) and CSV
+- [ ] Admin: Dashboard, audit log, settings
+- [ ] UI: iOS-style design system implemented once (tokens, components) and used by every screen; glass only on navigation and overlays
+- [ ] UI: Lite mode: automatic on weak devices, manual toggle, reduced-motion respected
+- [ ] UI: Performance checks (section 11) pass: smooth scrolling in Library and Review, long lists virtualized, PDF pages lazy
+- [ ] Security: Isolation tests pass with two organizations; files only via authenticated endpoint
+- [ ] Quality: README, seed script, PROGRESS.md, DECISIONS.md, accuracy table per template
+- [ ] Tier 2: Ask Data, comparison, PDF reports (only after all above)

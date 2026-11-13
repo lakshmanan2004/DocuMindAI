@@ -6,65 +6,67 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  Loader2,
   X,
   ArrowRight,
-  Layers
+  Layers,
+  Folder as FolderIcon
 } from 'lucide-react';
+import { Button, Card, Select, StatusBadge } from '../ui';
 
 const Upload = () => {
-  const [file, setFile] = useState(null);
+  const [fileList, setFileList] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [folders, setFolders] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState('');
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [uploadResults, setUploadResults] = useState([]);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
-  const ALLOWED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+  const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg'];
   const MAX_SIZE_MB = 15;
 
   useEffect(() => {
-    const fetchTemplates = async () => {
+    const fetchData = async () => {
       try {
-        const { data } = await api.get('/templates');
-        setTemplates(data.templates || []);
-        if (data.templates?.length > 0) {
-          setSelectedTemplateId(data.templates[0]._id);
-        }
+        const [tmplRes, folderRes] = await Promise.all([
+          api.get('/templates').catch(() => ({ data: { templates: [] } })),
+          api.get('/folders').catch(() => ({ data: { folders: [] } }))
+        ]);
+        setTemplates(tmplRes.data?.templates || []);
+        setFolders(folderRes.data?.folders || []);
       } catch (err) {
-        console.warn('Could not fetch templates:', err.message);
+        console.warn('Could not fetch templates/folders:', err.message);
       }
     };
-    fetchTemplates();
+    fetchData();
   }, []);
 
-  const validateAndSetFile = (selectedFile) => {
+  const validateFiles = (newFiles) => {
     setError('');
-    setSuccess(false);
-
-    if (!selectedFile) return;
-
-    if (!ALLOWED_TYPES.includes(selectedFile.type)) {
-      setError('Invalid file type. Only PDF, PNG, and JPG/JPEG files are accepted.');
-      setFile(null);
-      return;
+    const valid = [];
+    for (const f of newFiles) {
+      const ext = '.' + f.name.split('.').pop().toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        setError(`File '${f.name}' has an unsupported extension. Allowed: PDF, PNG, JPG, JPEG.`);
+        continue;
+      }
+      if (f.size > MAX_SIZE_MB * 1024 * 1024) {
+        setError(`File '${f.name}' exceeds maximum size of ${MAX_SIZE_MB}MB.`);
+        continue;
+      }
+      valid.push(f);
     }
 
-    if (selectedFile.size > MAX_SIZE_MB * 1024 * 1024) {
-      setError(`File size exceeds ${MAX_SIZE_MB}MB limit.`);
-      setFile(null);
-      return;
-    }
-
-    setFile(selectedFile);
+    setFileList((prev) => [...prev, ...valid]);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateAndSetFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      validateFiles(Array.from(e.dataTransfer.files));
     }
   };
 
@@ -72,191 +74,213 @@ const Upload = () => {
     e.preventDefault();
   };
 
-  const handleUpload = async () => {
-    if (!file) return;
+  const removeFile = (index) => {
+    setFileList((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleUploadAll = async () => {
+    if (fileList.length === 0) return;
 
     setUploading(true);
     setError('');
+    setUploadResults([]);
 
     const formData = new FormData();
-    formData.append('file', file);
+    for (const f of fileList) {
+      formData.append('files', f);
+    }
     if (selectedTemplateId) {
       formData.append('templateId', selectedTemplateId);
     }
+    if (selectedFolderId) {
+      formData.append('folderId', selectedFolderId);
+    }
 
     try {
-      await api.post('/documents', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      const { data } = await api.post('/documents', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setSuccess(true);
-      setFile(null);
+      setUploadResults(data.documents || (data.document ? [data.document] : []));
+      setFileList([]);
     } catch (err) {
-      setError(
-        err.response?.data?.message || 'Failed to upload document. Please try again.'
-      );
+      setError(err.response?.data?.message || 'Failed to upload documents. Please check file format.');
     } finally {
       setUploading(false);
     }
   };
 
+  const templateOptions = [
+    { label: 'Auto-Detect Document Type', value: '' },
+    ...templates.map((t) => ({ label: `${t.name} (${t.fields?.length || 0} fields)`, value: t._id }))
+  ];
+
+  const folderOptions = [
+    { label: 'No folder (Root Library)', value: '' },
+    ...folders.map((f) => ({ label: `📁 ${f.name}`, value: f._id }))
+  ];
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-          Upload Document
+        <h1 className="text-2xl font-bold text-[#1C1C1E] dark:text-[#F2F2F7] tracking-tight">
+          Upload Documents
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Upload an invoice, contract, or form to trigger OCR, LLM extraction, and validation.
+        <p className="text-sm text-[#6B7280] mt-1">
+          Upload PDFs or images for background OCR, AI classification, schema-driven field extraction, and vector embedding.
         </p>
       </div>
 
-      {/* Success Notification */}
-      {success && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-            <div>
-              <div className="font-semibold text-sm">Upload Successful!</div>
-              <div className="text-xs text-emerald-700">
-                Document queued for OCR, AI extraction, and confidence scoring.
-              </div>
+      {/* Upload Results Success Banner */}
+      {uploadResults.length > 0 && (
+        <Card className="bg-[#34C759]/10 border border-[#34C759]/20 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[#34C759] font-semibold text-sm">
+              <CheckCircle2 className="w-5 h-5" />
+              <span>{uploadResults.length} document(s) uploaded and queued for background processing!</span>
             </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => navigate('/library')}
+              icon={ArrowRight}
+            >
+              Go to Library
+            </Button>
           </div>
-          <button
-            onClick={() => navigate('/library')}
-            className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer"
-          >
-            View in Library <ArrowRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
+          <div className="space-y-1.5 pt-2 border-t border-[#34C759]/20">
+            {uploadResults.map((doc) => (
+              <div key={doc._id} className="flex items-center justify-between text-xs text-[#1C1C1E] dark:text-[#F2F2F7]">
+                <span className="font-medium truncate max-w-md">{doc.originalName}</span>
+                <StatusBadge status={doc.status} />
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
 
       {/* Error Banner */}
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center gap-3">
+        <div className="p-4 rounded-[16px] bg-[#FF3B30]/10 border border-[#FF3B30]/20 text-[#FF3B30] text-sm flex items-center gap-3">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Template Selection Box */}
-      {templates.length > 0 && (
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-              <Layers className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-slate-800">
-                Extraction Template
-              </div>
-              <div className="text-[11px] text-slate-400">
-                Determines which fields AI will extract from this document
-              </div>
-            </div>
-          </div>
-
-          <select
+      {/* Settings Grid: Template & Folder Pickers */}
+      <Card className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <Select
+            label="Target Template (Optional)"
             value={selectedTemplateId}
             onChange={(e) => setSelectedTemplateId(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            {templates.map((t) => (
-              <option key={t._id} value={t._id}>
-                {t.name} ({t.fields.length} fields)
-              </option>
-            ))}
-          </select>
+            options={templateOptions}
+          />
+          <span className="text-[11px] text-[#6B7280] mt-1 block">
+            Leave as Auto-Detect for DocuMind to identify the template automatically.
+          </span>
         </div>
-      )}
+
+        <div>
+          <Select
+            label="Assign Folder (Optional)"
+            value={selectedFolderId}
+            onChange={(e) => setSelectedFolderId(e.target.value)}
+            options={folderOptions}
+          />
+          <span className="text-[11px] text-[#6B7280] mt-1 block">
+            Organize documents into single-level tenant folders.
+          </span>
+        </div>
+      </Card>
 
       {/* Drag & Drop Area */}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onClick={() => fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
-          file
-            ? 'border-indigo-400 bg-indigo-50/20'
-            : 'border-slate-300 hover:border-indigo-400 bg-white hover:bg-slate-50/50'
+        className={`border-2 border-dashed rounded-[20px] p-10 text-center cursor-pointer transition-all ${
+          fileList.length > 0
+            ? 'border-[#007AFF] bg-[#007AFF]/5'
+            : 'border-black/15 dark:border-white/15 hover:border-[#007AFF] bg-white dark:bg-[#1C1C1E]'
         }`}
       >
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           accept=".pdf,.png,.jpg,.jpeg"
-          onChange={(e) => validateAndSetFile(e.target.files[0])}
+          onChange={(e) => validateFiles(Array.from(e.target.files))}
           className="hidden"
         />
 
         <div className="flex flex-col items-center">
-          <div className="h-16 w-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 shadow-sm">
+          <div className="h-16 w-16 rounded-2xl bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center mb-4">
             <UploadCloud className="h-8 w-8" />
           </div>
-          <h3 className="text-base font-semibold text-slate-800">
-            {file ? 'File selected' : 'Drag & drop your document here'}
+          <h3 className="text-base font-semibold text-[#1C1C1E] dark:text-[#F2F2F7]">
+            {fileList.length > 0 ? `${fileList.length} file(s) selected` : 'Drag & drop your files here'}
           </h3>
-          <p className="text-xs text-slate-500 mt-1">
-            Supports PDF, PNG, JPG or JPEG (Max 15MB)
+          <p className="text-xs text-[#6B7280] mt-1">
+            Supports multi-file upload for PDF, PNG, JPG or JPEG (Max 15MB each)
           </p>
-          <button
+          <Button
             type="button"
-            className="mt-4 px-4 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer"
+            variant="secondary"
+            size="sm"
+            className="mt-4"
+            onClick={(e) => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
           >
             Browse files
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Selected File Card */}
-      {file && (
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-              <FileText className="h-5 w-5" />
-            </div>
-            <div className="truncate max-w-sm">
-              <div className="font-semibold text-sm text-slate-900 truncate">
-                {file.name}
-              </div>
-              <div className="text-xs text-slate-500">
-                {(file.size / (1024 * 1024)).toFixed(2)} MB • {file.type || 'Document'}
-              </div>
-            </div>
+      {/* Selected Files Staging List */}
+      {fileList.length > 0 && (
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/10">
+            <h4 className="text-sm font-semibold text-[#1C1C1E] dark:text-[#F2F2F7]">
+              Ready to Upload ({fileList.length})
+            </h4>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={uploading}
+              onClick={handleUploadAll}
+            >
+              Upload All Documents
+            </Button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setFile(null);
-              }}
-              disabled={uploading}
-              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleUpload();
-              }}
-              disabled={uploading}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition-colors flex items-center gap-2 shadow-sm shadow-indigo-200 disabled:opacity-50 cursor-pointer"
-            >
-              {uploading ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                'Upload & Extract'
-              )}
-            </button>
+          <div className="divide-y divide-black/5 dark:divide-white/10 max-h-64 overflow-y-auto">
+            {fileList.map((f, idx) => (
+              <div key={idx} className="py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-3 truncate max-w-md">
+                  <div className="h-8 w-8 rounded-lg bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div className="truncate">
+                    <div className="text-xs font-semibold text-[#1C1C1E] dark:text-[#F2F2F7] truncate">{f.name}</div>
+                    <div className="text-[11px] text-[#6B7280]">
+                      {(f.size / (1024 * 1024)).toFixed(2)} MB • {f.type || 'Document'}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => removeFile(idx)}
+                  className="p-1.5 text-[#6B7280] hover:text-[#FF3B30] rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

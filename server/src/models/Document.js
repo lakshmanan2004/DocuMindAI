@@ -14,6 +14,12 @@ const documentSchema = new mongoose.Schema(
       required: [true, 'Uploader user ID is required'],
       index: true
     },
+    folderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Folder',
+      default: null,
+      index: true
+    },
     originalName: {
       type: String,
       required: [true, 'Original filename is required'],
@@ -34,7 +40,17 @@ const documentSchema = new mongoose.Schema(
     templateId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Template',
-      default: null
+      default: null,
+      index: true
+    },
+    docType: {
+      type: String,
+      default: 'Other',
+      index: true
+    },
+    classificationConfidence: {
+      type: Number,
+      default: 0
     },
     status: {
       type: String,
@@ -42,7 +58,7 @@ const documentSchema = new mongoose.Schema(
         values: ['uploaded', 'queued', 'processing', 'completed', 'needs_review', 'failed', 'reviewed'],
         message: '{VALUE} is not a valid document status'
       },
-      default: 'uploaded',
+      default: 'queued',
       index: true
     },
     errorMessage: {
@@ -59,9 +75,10 @@ const documentSchema = new mongoose.Schema(
   }
 );
 
-// Compound index: Fast sorting and filtering within a tenant
+// Compound indexes as required by Section 8 (Page 10)
 documentSchema.index({ orgId: 1, createdAt: -1 });
 documentSchema.index({ orgId: 1, status: 1 });
+documentSchema.index({ orgId: 1, docType: 1 });
+documentSchema.index({ orgId: 1, folderId: 1 });
 
 module.exports = mongoose.model('Document', documentSchema);
-

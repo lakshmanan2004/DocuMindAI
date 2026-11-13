@@ -32,8 +32,14 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/folders', require('./routes/folderRoutes'));
 app.use('/api/documents', require('./routes/documentRoutes'));
 app.use('/api/templates', require('./routes/templateRoutes'));
+app.use('/api/chat', require('./routes/chatRoutes'));
+app.use('/api/export', require('./routes/exportRoutes'));
+app.use('/api/audit', require('./routes/auditRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
 
 // Global 404 handler
 app.use((req, res, next) => {

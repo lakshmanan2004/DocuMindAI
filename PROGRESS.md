@@ -11,7 +11,7 @@ Rules: Tier 1 is mandatory (M0 to M8). Prove every milestone with all 5 document
 | :--- | :--- | :--- | :--- | :--- |
 | **M0** | **Setup & Foundation** | Repos, env, Mongo Atlas, Redis, Ollama, health route, seed skeleton, design system (tokens, glass, Lite mode, base UI, `/ui` demo) | ✅ Complete | • Ollama responds (`llama3.2`, `nomic-embed-text`)<br>• `/health` returns 200 OK<br>• Redis verified / resilient fallback active<br>• Embedding length 768 recorded in DECISIONS.md<br>• `/ui` showcases all base components in Light, Dark, Lite modes |
 | **M1** | **Authentication, Org & Users** | Register org + clone 5 built-in templates, JWT with `id, orgId, role` (8h expiry), 4 RBAC roles (Admin, Employee, Reviewer, Viewer), deactivated user check, rate limiting | ✅ Complete | • 2 orgs isolated (zero data leakage)<br>• 401 without token / invalid token<br>• 403 on forbidden role<br>• Deactivated user immediately blocked on login & session token<br>• 5 built-in templates cloned upon org registration |
-| **M2** | **Upload, Library & Folders** | Multi-file upload (PDF, PNG, JPG, JPEG), file signature + size check, single-level folders, library table, authenticated file preview | ⏳ Pending | • 5 mixed files uploaded<br>• Filters and preview work<br>• Bad file rejected<br>• Delete removes doc, pages, chunks, extraction |
+| **M2** | **Upload, Library & Folders** | Multi-file upload (PDF, PNG, JPG, JPEG), file signature + size check, single-level folders, library table, authenticated file preview | ✅ Complete | • Upload 5 mixed files (PDF, PNG, JPG)<br>• Magic-byte signature & size validation<br>• Folder CRUD + documents move to "No folder"<br>• Filters (status, docType, search) verified<br>• Authenticated preview with orgId isolation<br>• Cascade delete removes file, pages, chunks, extraction |
 | **M3** | **Text Extraction & OCR** | `pdf-parse` per page, pdftoppm/tesseract OCR for pages < 30 chars, sharp cleanup for images, page-wise text stored | ⏳ Pending | • Digital PDF, scanned PDF, phone photo all produce page-wise text<br>• Corrupt file marks `failed` gracefully |
 | **M4** | **Template Engine & 5 Built-ins** | Generic field types (string, number, date, boolean, list, table), validation engine, 5 built-in templates seeded, template builder UI & test sandbox | ⏳ Pending | • New org gets 5 templates<br>• Builder creates table fields and rules<br>• Test box tests text without saving |
 | **M5** | **Classification, Extraction & Review** | Auto-classification via Llama (with fallback to Other), windowed extraction (schema-driven), rule evaluation, confidence scoring, side-by-side Review UI | ⏳ Pending | • All 5 document types classified & extracted<br>• Table fields render editable grids<br>• Invalid GSTIN / mismatched sums flagged<br>• Manual corrections persist |
@@ -35,7 +35,7 @@ Rules: Tier 1 is mandatory (M0 to M8). Prove every milestone with all 5 document
 - [ ] Core: Five built-in templates seeded per organization; custom template created in UI works end-to-end
 - [ ] Core: Table fields supported in extraction, review grid, export
 - [x] Auth: Register organization, login, users, four roles enforced on API and UI
-- [ ] Docs: Multi-upload, library filters, folders, preview, delete, reprocess
+- [x] Docs: Multi-upload, library filters, folders, preview, delete, reprocess
 - [ ] AI: Text extraction for digital PDF, scanned PDF, image; page-wise
 - [ ] AI: Auto-classification with Change type; Other fallback
 - [ ] AI: Extraction with schema validation, retry, rules, confidence, source page

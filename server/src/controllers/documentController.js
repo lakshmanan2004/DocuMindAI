@@ -1,45 +1,102 @@
 const path = require('path');
 const fs = require('fs');
-const { Document, DocumentPage, Extraction, Template } = require('../models');
+const { Document, DocumentPage, Extraction, Template, Chunk, User, Folder } = require('../models');
 const { uploadDirectory } = require('../middleware/upload');
 const { addDocumentJob } = require('../queues/docQueue');
 const { validateExtraction } = require('../services/validate');
+const { recordAudit } = require('../services/audit');
+const { validateFileSignature } = require('../utils/fileSignature');
 
 /**
- * @desc    Upload a new document (PDF, PNG, JPG) and enqueue for background processing
+ * @desc    Upload single or multiple documents and enqueue for background processing
+ *          Validates file signatures (magic bytes) and checks orgId (Spec M2)
  * @route   POST /api/documents
  * @access  Private (Admin, Employee, Reviewer)
  */
 const uploadDocument = async (req, res, next) => {
+  const uploadedFiles = req.files && req.files.length > 0 ? req.files : req.file ? [req.file] : [];
+
+  if (uploadedFiles.length === 0) {
+    return res.status(400).json({ message: 'No file uploaded. Please attach at least one document.' });
+  }
+
+  const { templateId, folderId } = req.body;
+  const createdDocs = [];
+
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded. Please attach a document.' });
+    // 1. Verify Folder (if provided) belongs to this organization
+    let validFolderId = null;
+    if (folderId && folderId !== 'null' && folderId !== 'none') {
+      const folder = await Folder.findOne({ _id: folderId, orgId: req.user.orgId });
+      if (folder) validFolderId = folder._id;
     }
 
-    const { templateId } = req.body;
+    // 2. Verify Template (if provided) belongs to this organization
+    let validTemplateId = null;
+    let templateName = 'Other';
+    if (templateId && templateId !== 'null' && templateId !== 'none') {
+      const tmpl = await Template.findOne({ _id: templateId, orgId: req.user.orgId });
+      if (tmpl) {
+        validTemplateId = tmpl._id;
+        templateName = tmpl.name;
+      }
+    }
 
-    const doc = await Document.create({
-      orgId: req.user.orgId,
-      uploadedBy: req.user.id,
-      originalName: req.file.originalname,
-      mimeType: req.file.mimetype,
-      filePath: req.file.filename,
-      size: req.file.size,
-      templateId: templateId || null,
-      status: 'queued'
-    });
+    // 3. Process each uploaded file
+    for (const file of uploadedFiles) {
+      const fullPath = path.join(uploadDirectory, file.filename);
 
-    await addDocumentJob(doc._id);
+      // Validate magic bytes
+      const detectedMime = validateFileSignature(fullPath);
+      if (!detectedMime) {
+        // Remove corrupted or invalid file from disk
+        if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+        return res.status(400).json({
+          message: `File '${file.originalname}' has an invalid or corrupted file signature. Only authentic PDF, PNG, and JPEG files are permitted.`
+        });
+      }
+
+      const doc = await Document.create({
+        orgId: req.user.orgId,
+        uploadedBy: req.user.id,
+        folderId: validFolderId,
+        templateId: validTemplateId,
+        docType: validTemplateId ? templateName : 'Other',
+        originalName: file.originalname,
+        mimeType: detectedMime,
+        filePath: file.filename,
+        size: file.size,
+        status: 'queued'
+      });
+
+      // Enqueue job for background processing worker
+      await addDocumentJob(doc._id);
+      createdDocs.push(doc);
+
+      // Record audit event
+      await recordAudit({
+        orgId: req.user.orgId,
+        userId: req.user.id,
+        userName: req.user.name || 'User',
+        userRole: req.user.role,
+        action: 'upload',
+        targetType: 'document',
+        targetId: doc._id.toString(),
+        details: { fileName: doc.originalName, size: doc.size, mimeType: doc.mimeType }
+      });
+    }
 
     return res.status(201).json({
-      message: 'Document uploaded and queued for processing',
-      document: doc
+      message: `${createdDocs.length} document(s) uploaded and queued for processing`,
+      documents: createdDocs,
+      document: createdDocs[0] // backward compatibility for single-upload callers
     });
   } catch (error) {
-    if (req.file) {
-      const fullPath = path.join(uploadDirectory, req.file.filename);
+    // Clean up any files written to disk during this failed request
+    for (const file of uploadedFiles) {
+      const fullPath = path.join(uploadDirectory, file.filename);
       if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
+        try { fs.unlinkSync(fullPath); } catch (e) {}
       }
     }
     next(error);
@@ -53,16 +110,50 @@ const uploadDocument = async (req, res, next) => {
  */
 const getDocuments = async (req, res, next) => {
   try {
-    const { status, search, page = 1, limit = 20 } = req.query;
+    const {
+      status,
+      docType,
+      folderId,
+      startDate,
+      endDate,
+      q,
+      search,
+      page = 1,
+      limit = 20
+    } = req.query;
 
     const query = { orgId: req.user.orgId };
 
-    if (status) {
+    // Status filter
+    if (status && status !== 'all') {
       query.status = status;
     }
 
-    if (search) {
-      query.originalName = { $regex: search.trim(), $options: 'i' };
+    // Document type / template filter
+    if (docType && docType !== 'all') {
+      query.docType = docType;
+    }
+
+    // Folder filter
+    if (folderId) {
+      if (folderId === 'null' || folderId === 'none' || folderId === 'unassigned') {
+        query.folderId = null;
+      } else if (folderId !== 'all') {
+        query.folderId = folderId;
+      }
+    }
+
+    // Date range filter
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+    }
+
+    // Name search query (supports 'q' or 'search')
+    const searchTerm = q || search;
+    if (searchTerm && searchTerm.trim()) {
+      query.originalName = { $regex: searchTerm.trim(), $options: 'i' };
     }
 
     const pageNum = Math.max(1, parseInt(page, 10));
@@ -76,6 +167,7 @@ const getDocuments = async (req, res, next) => {
         .limit(limitNum)
         .populate('uploadedBy', 'name email role')
         .populate('templateId', 'name')
+        .populate('folderId', 'name')
         .lean(),
       Document.countDocuments(query)
     ]);
@@ -106,7 +198,8 @@ const getDocumentById = async (req, res, next) => {
       orgId: req.user.orgId
     })
       .populate('uploadedBy', 'name email role')
-      .populate('templateId', 'name fields');
+      .populate('templateId', 'name fields rules')
+      .populate('folderId', 'name');
 
     if (!doc) {
       return res.status(404).json({ message: 'Document not found' });
@@ -119,7 +212,7 @@ const getDocumentById = async (req, res, next) => {
 };
 
 /**
- * @desc    Get extracted text pages for a document
+ * @desc    Get extracted text pages for a document (Spec M3)
  * @route   GET /api/documents/:id/pages
  * @access  Private (All roles)
  */
@@ -169,7 +262,7 @@ const getDocumentExtraction = async (req, res, next) => {
       documentId: doc._id,
       orgId: req.user.orgId
     })
-      .populate('templateId', 'name fields')
+      .populate('templateId', 'name fields rules')
       .populate('reviewedBy', 'name email');
 
     if (!extraction) {
@@ -192,11 +285,7 @@ const getDocumentExtraction = async (req, res, next) => {
  */
 const saveExtractionCorrections = async (req, res, next) => {
   try {
-    const { fields } = req.body; // Array of { key, value }
-
-    if (!fields || !Array.isArray(fields)) {
-      return res.status(400).json({ message: 'Fields array is required' });
-    }
+    const { fields, data } = req.body;
 
     const extraction = await Extraction.findOne({
       documentId: req.params.id,
@@ -207,29 +296,36 @@ const saveExtractionCorrections = async (req, res, next) => {
       return res.status(404).json({ message: 'Extraction not found' });
     }
 
-    // Update fields and mark edited = true, confidence = 1.0 (verified by human)
-    const updatedValuesMap = {};
-    for (const update of fields) {
-      const target = extraction.fields.find((f) => f.key === update.key);
-      if (target) {
-        if (target.value !== update.value) {
-          target.value = update.value;
-          target.edited = true;
-          target.confidence = 1.0;
-        }
+    const updatedData = data || {};
+    if (fields && Array.isArray(fields)) {
+      for (const f of fields) {
+        updatedData[f.key] = f.value;
       }
-      updatedValuesMap[update.key] = update.value;
     }
 
-    // Re-run validations with the new human-corrected values
-    const newValidationIssues = await validateExtraction(
-      updatedValuesMap,
-      req.user.orgId,
-      req.params.id
-    );
-    extraction.validationIssues = newValidationIssues;
+    extraction.data = { ...extraction.data, ...updatedData };
+    if (!extraction.meta) extraction.meta = {};
+
+    for (const key of Object.keys(updatedData)) {
+      extraction.meta[key] = {
+        ...(extraction.meta[key] || {}),
+        edited: true,
+        confidence: 1.0
+      };
+    }
 
     await extraction.save();
+
+    await recordAudit({
+      orgId: req.user.orgId,
+      userId: req.user.id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      action: 'edit',
+      targetType: 'extraction',
+      targetId: req.params.id,
+      details: { fields: Object.keys(updatedData) }
+    });
 
     return res.status(200).json({
       message: 'Corrections saved successfully',
@@ -265,14 +361,23 @@ const approveDocument = async (req, res, next) => {
       return res.status(404).json({ message: 'Cannot approve document without extraction data' });
     }
 
-    // Mark extraction as reviewed by current user
     extraction.reviewedBy = req.user.id;
     extraction.reviewedAt = new Date();
     await extraction.save();
 
-    // Mark document status as 'reviewed'
     doc.status = 'reviewed';
     await doc.save();
+
+    await recordAudit({
+      orgId: req.user.orgId,
+      userId: req.user.id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      action: 'approve',
+      targetType: 'document',
+      targetId: doc._id.toString(),
+      details: { fileName: doc.originalName }
+    });
 
     return res.status(200).json({
       message: 'Document approved successfully',
@@ -285,7 +390,7 @@ const approveDocument = async (req, res, next) => {
 };
 
 /**
- * @desc    Reprocess a failed or stuck document
+ * @desc    Reprocess a document with optional new template
  * @route   POST /api/documents/:id/reprocess
  * @access  Private (Admin, Reviewer)
  */
@@ -300,11 +405,39 @@ const reprocessDocument = async (req, res, next) => {
       return res.status(404).json({ message: 'Document not found' });
     }
 
+    const { templateId } = req.body;
+    if (templateId) {
+      const tmpl = await Template.findOne({ _id: templateId, orgId: req.user.orgId });
+      if (tmpl) {
+        doc.templateId = tmpl._id;
+        doc.docType = tmpl.name;
+      }
+    }
+
+    // Reset status and clear error
     doc.status = 'queued';
     doc.errorMessage = null;
     await doc.save();
 
+    // Clear old extraction, pages, and chunks for fresh reprocessing
+    await Promise.all([
+      DocumentPage.deleteMany({ documentId: doc._id }),
+      Extraction.deleteMany({ documentId: doc._id }),
+      Chunk.deleteMany({ documentId: doc._id })
+    ]);
+
     await addDocumentJob(doc._id);
+
+    await recordAudit({
+      orgId: req.user.orgId,
+      userId: req.user.id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      action: 'reprocess',
+      targetType: 'document',
+      targetId: doc._id.toString(),
+      details: { templateId: doc.templateId, fileName: doc.originalName }
+    });
 
     return res.status(200).json({
       message: 'Document enqueued for reprocessing',
@@ -316,7 +449,7 @@ const reprocessDocument = async (req, res, next) => {
 };
 
 /**
- * @desc    Stream or preview a document file
+ * @desc    Stream or preview a document file (Authenticated)
  * @route   GET /api/documents/:id/file
  * @access  Private (All roles)
  */
@@ -349,9 +482,9 @@ const getDocumentFile = async (req, res, next) => {
 };
 
 /**
- * @desc    Delete a document and its stored file, pages, and extractions
+ * @desc    Delete a single document and remove file, pages, chunks, extraction
  * @route   DELETE /api/documents/:id
- * @access  Private (Admin, or Employee who uploaded it)
+ * @access  Private (Admin or Owner Employee)
  */
 const deleteDocument = async (req, res, next) => {
   try {
@@ -364,33 +497,115 @@ const deleteDocument = async (req, res, next) => {
       return res.status(404).json({ message: 'Document not found' });
     }
 
+    if (req.user.role === 'reviewer' || req.user.role === 'viewer') {
+      return res.status(403).json({
+        message: 'Forbidden: Your role does not have permission to delete documents'
+      });
+    }
+
     const isOwner = doc.uploadedBy.toString() === req.user.id;
     const isAdmin = req.user.role === 'admin';
 
     if (!isAdmin && !isOwner) {
       return res.status(403).json({
-        message: 'Forbidden: You can only delete documents that you uploaded'
+        message: 'Forbidden: Employees can only delete documents that they uploaded'
       });
     }
 
     // Remove file from disk
     const fullPath = path.join(uploadDirectory, doc.filePath);
     if (fs.existsSync(fullPath)) {
-      try {
-        fs.unlinkSync(fullPath);
-      } catch (err) {
-        console.warn(`[Warning] Could not remove file on disk: ${fullPath}`, err.message);
-      }
+      try { fs.unlinkSync(fullPath); } catch (err) {}
     }
 
-    // Delete associated pages, extractions, and document record
-    await DocumentPage.deleteMany({ documentId: doc._id });
-    await Extraction.deleteMany({ documentId: doc._id });
-    await Document.deleteOne({ _id: doc._id });
+    // Cascade delete DB collections
+    await Promise.all([
+      DocumentPage.deleteMany({ documentId: doc._id }),
+      Extraction.deleteMany({ documentId: doc._id }),
+      Chunk.deleteMany({ documentId: doc._id }),
+      Document.deleteOne({ _id: doc._id })
+    ]);
+
+    await recordAudit({
+      orgId: req.user.orgId,
+      userId: req.user.id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      action: 'delete',
+      targetType: 'document',
+      targetId: doc._id.toString(),
+      details: { fileName: doc.originalName }
+    });
 
     return res.status(200).json({
-      message: 'Document deleted successfully',
+      message: 'Document and all associated data deleted successfully',
       deletedId: doc._id
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Bulk delete documents
+ * @route   POST /api/documents/bulk-delete
+ * @access  Private (Admin or Owner Employee)
+ */
+const bulkDeleteDocuments = async (req, res, next) => {
+  try {
+    const { documentIds } = req.body;
+    if (!documentIds || !Array.isArray(documentIds) || documentIds.length === 0) {
+      return res.status(400).json({ message: 'documentIds array is required' });
+    }
+
+    if (req.user.role === 'reviewer' || req.user.role === 'viewer') {
+      return res.status(403).json({
+        message: 'Forbidden: Your role does not have permission to delete documents'
+      });
+    }
+
+    const isAdmin = req.user.role === 'admin';
+    const query = {
+      _id: { $in: documentIds },
+      orgId: req.user.orgId
+    };
+
+    if (!isAdmin) {
+      query.uploadedBy = req.user.id;
+    }
+
+    const docsToDelete = await Document.find(query);
+    const deletedIds = [];
+
+    for (const doc of docsToDelete) {
+      const fullPath = path.join(uploadDirectory, doc.filePath);
+      if (fs.existsSync(fullPath)) {
+        try { fs.unlinkSync(fullPath); } catch (e) {}
+      }
+      deletedIds.push(doc._id);
+    }
+
+    await Promise.all([
+      DocumentPage.deleteMany({ documentId: { $in: deletedIds } }),
+      Extraction.deleteMany({ documentId: { $in: deletedIds } }),
+      Chunk.deleteMany({ documentId: { $in: deletedIds } }),
+      Document.deleteMany({ _id: { $in: deletedIds } })
+    ]);
+
+    await recordAudit({
+      orgId: req.user.orgId,
+      userId: req.user.id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      action: 'bulk_delete',
+      targetType: 'document',
+      targetId: deletedIds.join(','),
+      details: { count: deletedIds.length }
+    });
+
+    return res.status(200).json({
+      message: `${deletedIds.length} document(s) deleted successfully`,
+      deletedIds
     });
   } catch (error) {
     next(error);
@@ -407,5 +622,6 @@ module.exports = {
   approveDocument,
   reprocessDocument,
   getDocumentFile,
-  deleteDocument
+  deleteDocument,
+  bulkDeleteDocuments
 };

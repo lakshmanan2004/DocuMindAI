@@ -59,14 +59,21 @@ const getTemplates = async (req, res, next) => {
   try {
     let templates = await Template.find({ orgId: req.user.orgId }).sort({ createdAt: 1 });
 
-    // Seed default 5 built-in templates if none exist yet for this org
-    if (templates.length === 0) {
-      const seeded = builtInTemplates.map((t) => ({
-        ...t,
-        orgId: req.user.orgId,
-        createdBy: req.user.id
-      }));
-      templates = await Template.insertMany(seeded);
+    // Ensure all 5 built-in templates exist for this organization
+    for (const builtIn of builtInTemplates) {
+      const exists = templates.find(
+        (t) =>
+          t.name.toLowerCase() === builtIn.name.toLowerCase() ||
+          (builtIn.name === 'Contract or Agreement' && t.name.toLowerCase() === 'agreement')
+      );
+      if (!exists) {
+        const newTmpl = await Template.create({
+          ...builtIn,
+          orgId: req.user.orgId,
+          createdBy: req.user.id
+        });
+        templates.push(newTmpl);
+      }
     }
 
     // Compute documentCount for each template in this organization

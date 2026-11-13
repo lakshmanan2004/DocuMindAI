@@ -373,3 +373,4 @@ Long Document Server Rack | 5 | 10000.00 | 50000.00
 }
 
 runM5Tests();
+

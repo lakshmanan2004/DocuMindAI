@@ -232,16 +232,48 @@ const scoreConfidence = (templateFields = [], extractedValues = {}, pages = [], 
       candidates.push(`$${numVal}`);
     }
 
+    // ID variations (handling hyphens, spaces, and OCR line wraps)
+    if (key.includes('id') || key.includes('number') || key.includes('no') || key.includes('code')) {
+      const noHyphens = searchStr.replace(/[-\s]/g, '');
+      candidates.push(noHyphens);
+      if (searchStr.length >= 8) {
+        candidates.push(searchStr.slice(0, 8));
+        candidates.push(searchStr.slice(-8));
+      }
+    }
+
     // Search across document pages
     for (const page of pages) {
-      const pageText = (page.text || '').toLowerCase();
+      const rawText = page.text || '';
+      const pageText = rawText.toLowerCase();
+      const normalizedPageText = pageText.replace(/\s+/g, ' ');
+      const compactPageText = pageText.replace(/[-\s]/g, '');
 
       for (const candidate of candidates) {
-        const matchIndex = pageText.indexOf(candidate.toLowerCase());
+        const cLower = candidate.toLowerCase();
+        const matchIndex = pageText.indexOf(cLower);
         if (matchIndex !== -1) {
           isWordForWord = true;
           foundPage = page.pageNumber;
-          foundSnippet = extractCleanSnippet(page.text, matchIndex, candidate.length);
+          foundSnippet = extractCleanSnippet(rawText, matchIndex, candidate.length);
+          break;
+        }
+
+        // Check normalized spaces (in case candidate was split across line break)
+        const normIndex = normalizedPageText.indexOf(cLower);
+        if (normIndex !== -1) {
+          isWordForWord = true;
+          foundPage = page.pageNumber;
+          foundSnippet = extractCleanSnippet(rawText, Math.max(0, normIndex - 10), candidate.length + 20);
+          break;
+        }
+
+        // Check compact (ignoring hyphens and spaces completely for IDs/codes)
+        const cCompact = cLower.replace(/[-\s]/g, '');
+        if (cCompact.length >= 5 && compactPageText.includes(cCompact)) {
+          isWordForWord = true;
+          foundPage = page.pageNumber;
+          foundSnippet = `Matched value: ${rawVal}`;
           break;
         }
       }

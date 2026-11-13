@@ -94,7 +94,6 @@ const parseDateToISO = (dateStr) => {
   if (!dateStr || typeof dateStr !== 'string') return null;
   const str = dateStr.trim().replace(/,/g, '');
 
-  // 1. Text month: "12 Nov 2026", "12-Nov-2026", "12 November 2026"
   const dayMonthTextMatch = str.match(/\b(\d{1,2})[-/\s]+([A-Za-z]{3,9})[-/\s]+(\d{2,4})\b/);
   if (dayMonthTextMatch) {
     const day = dayMonthTextMatch[1].padStart(2, '0');
@@ -105,7 +104,6 @@ const parseDateToISO = (dateStr) => {
     if (month) return `${year}-${month}-${day}`;
   }
 
-  // 2. Text month prefix: "Nov 12 2026", "November 12 2026"
   const monthTextDayMatch = str.match(/\b([A-Za-z]{3,9})[-/\s]+(\d{1,2})[-/\s]+(\d{2,4})\b/);
   if (monthTextDayMatch) {
     const monthKey = monthTextDayMatch[1].toLowerCase();
@@ -116,7 +114,6 @@ const parseDateToISO = (dateStr) => {
     if (month) return `${year}-${month}-${day}`;
   }
 
-  // 3. Numeric: DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
   const numMatch = str.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b/);
   if (numMatch) {
     const day = numMatch[1].padStart(2, '0');
@@ -126,7 +123,6 @@ const parseDateToISO = (dateStr) => {
     return `${year}-${month}-${day}`;
   }
 
-  // 4. ISO: YYYY-MM-DD
   const isoMatch = str.match(/\b(\d{4})[-/.](\d{2})[-/.](\d{2})\b/);
   if (isoMatch) {
     return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
@@ -186,7 +182,7 @@ const wordsToNumber = (wordsStr) => {
 };
 
 /**
- * Post-process extracted fields with domain normalization and date parsing
+ * Post-process extracted fields with domain normalization, date parsing, and ID cleaning
  */
 const postProcessExtracted = (extracted, fullText, template = {}) => {
   const result = { ...extracted };
@@ -199,7 +195,43 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
     }
   }
 
-  // 2. Invoice / Tax specifics (only when relevant fields exist)
+  // 2. ID Fields Cleaning (clean up multi-line wraps, prefix labels, or extra whitespace)
+  const idFields = ['patient_id', 'register_number', 'invoice_number', 'po_number'];
+  for (const idKey of idFields) {
+    if (result[idKey] && typeof result[idKey] === 'string') {
+      // Strip common label prefixes like "Registration ID: ", "Invoice No: ", "PO #", etc.
+      let cleaned = result[idKey]
+        .replace(/^(?:patient\s*(?:id|\bno\.?)|registration\s*(?:id|\bno\.?)|reg(?:istration)?\s*\bno\.?|uhid|mrn|sample\s*id|invoice\s*(?:number|\bno\.?|#)|inv\s*(?:number|\bno\.?|#)|po\s*(?:number|\bno\.?|#)|purchase\s*order\s*(?:number|\bno\.?|#)|register\s*(?:\bno\.?|number)|roll\s*\bno\.?|\bno\.?|#)\s*[:.-]?\s*/i, '')
+        .trim();
+
+      cleaned = cleaned.replace(/[\r\n]+/g, '').replace(/\s+/g, '').trim();
+      result[idKey] = cleaned;
+    }
+  }
+
+  // 2b. If any ID field was missed by LLM, try regex extraction from fullText directly
+  if (!result.patient_id) {
+    const match = fullText.match(/(?:patient\s*(?:id|no\.?)|registration\s*id|reg(?:istration)?\s*no\.?|uhid|mrn|sample\s*id|barcode)\s*[:.-]?\s*([A-Za-z0-9_/-]{3,40})/i);
+    if (match) result.patient_id = match[1].trim();
+  }
+  if (!result.register_number) {
+    const match = fullText.match(/(?:register\s*(?:no\.?|number)|registration\s*no\.?|roll\s*no\.?|enrollment\s*no\.?|prn|hall\s*ticket\s*no\.?)\s*[:.-]?\s*([A-Za-z0-9_/-]{3,40})/i);
+    if (match) result.register_number = match[1].trim();
+  }
+  if (!result.invoice_number) {
+    const match = fullText.match(/(?:invoice\s*(?:number|no\.?|#)|inv\s*(?:number|no\.?|#)|bill\s*(?:number|no\.?|#)|tax\s*invoice\s*#)\s*[:.-]?\s*([A-Za-z0-9_/-]{3,30})/i);
+    if (match) result.invoice_number = match[1].trim();
+  }
+  if (!result.po_number) {
+    const match = fullText.match(/(?:p\.?o\.?\s*(?:number|no\.?|#)|purchase\s*order\s*(?:number|no\.?|#)|order\s*(?:number|no\.?|#))\s*[:.-]?\s*([A-Za-z0-9_/-]{3,30})/i);
+    if (match) result.po_number = match[1].trim();
+  }
+  if (!result.agreement_title) {
+    const match = fullText.match(/^([^\n]{5,100}(?:AGREEMENT|CONTRACT|UNDERTAKING|MOU|DEED)[^\n]{0,100})/im);
+    if (match) result.agreement_title = match[1].trim();
+  }
+
+  // 3. Invoice / Tax specifics
   if (result.supplier_gstin) {
     const raw = String(result.supplier_gstin).replace(/[\s-]/g, '').toUpperCase();
     result.supplier_gstin = sanitizeGstin(raw);
@@ -240,8 +272,23 @@ const fallbackExtract = (text, fields = []) => {
     } else if (key.includes('gstin')) {
       const match = text.match(/\b\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z2][A-Z\d]{1}\b/i);
       if (match) extracted[f.key] = sanitizeGstin(match[0].toUpperCase());
-    } else if (key.includes('invoice') || key.includes('number') || key.includes('no')) {
-      const match = text.match(/(?:inv(?:oice)?|bill|po|register|patient\s*id)\s*(?:no\.?|#|number)?\s*[:.-]?\s*([A-Z0-9\/-]{3,30})/i);
+    } else if (key === 'patient_id' || key.includes('patient_id') || key.includes('uhid')) {
+      const match = text.match(/(?:patient\s*(?:id|no\.?)|registration\s*id|reg(?:istration)?\s*no\.?|uhid|mrn|sample\s*id|barcode)\s*[:.-]?\s*([A-Za-z0-9_-\s]{3,60})/i);
+      if (match) {
+        const rawId = match[1].split(/[\r\n]+/)[0].replace(/\s+/g, '').trim();
+        if (rawId) extracted[f.key] = rawId;
+      }
+    } else if (key === 'agreement_title' || key.includes('title')) {
+      const match = text.match(/^([^\n]{5,100}(?:AGREEMENT|CONTRACT|UNDERTAKING|MOU|DEED)[^\n]{0,100})/im);
+      if (match) extracted[f.key] = match[1].trim();
+    } else if (key === 'register_number' || key.includes('register') || key.includes('roll')) {
+      const match = text.match(/(?:register\s*(?:no\.?|number)|registration\s*no\.?|roll\s*no\.?|enrollment\s*no\.?|prn|hall\s*ticket\s*no\.?)\s*[:.-]?\s*([A-Za-z0-9\/-]{3,40})/i);
+      if (match) extracted[f.key] = match[1].trim();
+    } else if (key === 'po_number' || key.includes('po_number') || key.includes('po_no')) {
+      const match = text.match(/(?:p\.?o\.?\s*(?:number|no\.?|#)|purchase\s*order\s*(?:number|no\.?|#)|order\s*(?:number|no\.?|#))\s*[:.-]?\s*([A-Za-z0-9\/-]{3,30})/i);
+      if (match) extracted[f.key] = match[1].trim();
+    } else if (key === 'invoice_number' || key.includes('invoice') || key.includes('inv')) {
+      const match = text.match(/(?:invoice\s*(?:number|no\.?|#)|inv\s*(?:number|no\.?|#)|bill\s*(?:number|no\.?|#)|tax\s*invoice\s*#)\s*[:.-]?\s*([A-Za-z0-9\/-]{3,30})/i);
       if (match) extracted[f.key] = match[1].trim();
     } else if (key.includes('total') || key.includes('amount') || key.includes('cost')) {
       const match = text.match(/(?:(?:grand\s*)?total|amount\s*payable|net\s*payable|total\s*cost|total\s*marks|balance\s*due)\s*[:.-]?\s*(?:₹|rs\.?|inr)?\s*([0-9,]+(?:\.\d{2})?)/i);
@@ -265,6 +312,73 @@ const fallbackExtract = (text, fields = []) => {
 };
 
 /**
+ * Deterministic domain anchor score to prevent cross-type confusion (e.g. Lab Report vs Purchase Order)
+ */
+const calculateDomainAnchorScore = (templateName, sampleText) => {
+  const text = sampleText.toLowerCase();
+  let anchorScore = 0;
+
+  if (templateName === 'Lab Report') {
+    const medicalAnchors = [
+      'patient', 'specimen', 'diagnostic', 'laboratory', 'pathology',
+      'blood', 'hemoglobin', 'reference interval', 'clinical', 'sample lab',
+      'investigation', 'urine', 'cbc', 'wbc', 'platelet', 'serum',
+      'test details', 'referring doctor', 'age / gender', 'fasting blood sugar'
+    ];
+    let hits = 0;
+    for (const anchor of medicalAnchors) {
+      if (text.includes(anchor)) hits++;
+    }
+    if (hits >= 2) anchorScore += hits * 4;
+  } else if (templateName === 'Mark Sheet') {
+    const academicAnchors = [
+      'semester', 'marks', 'grade', 'exam session', 'subjects',
+      'transcript', 'grade card', 'statement of marks', 'register number',
+      'cgpa', 'sgpa', 'pass / fail', 'institution', 'bachelor of'
+    ];
+    let hits = 0;
+    for (const anchor of academicAnchors) {
+      if (text.includes(anchor)) hits++;
+    }
+    if (hits >= 2) anchorScore += hits * 4;
+  } else if (templateName === 'Invoice') {
+    const invoiceAnchors = [
+      'tax invoice', 'gstin', 'cgst', 'sgst', 'igst',
+      'invoice number', 'taxable amount', 'taxable value', 'bill to',
+      'amount in words', 'bill of supply'
+    ];
+    let hits = 0;
+    for (const anchor of invoiceAnchors) {
+      if (text.includes(anchor)) hits++;
+    }
+    if (hits >= 2) anchorScore += hits * 4;
+  } else if (templateName === 'Purchase Order') {
+    const poAnchors = [
+      'purchase order', 'po number', 'p.o. number', 'vendor name',
+      'delivery date', 'ship to', 'shipping address', 'po date'
+    ];
+    let hits = 0;
+    for (const anchor of poAnchors) {
+      if (text.includes(anchor)) hits++;
+    }
+    if (hits >= 2) anchorScore += hits * 4;
+  } else if (templateName === 'Contract or Agreement') {
+    const legalAnchors = [
+      'agreement', 'contract', 'parties hereto', 'governing law',
+      'whereas', 'in witness whereof', 'termination clause', 'terms of agreement',
+      'effective date', 'end date', 'first party', 'second party'
+    ];
+    let hits = 0;
+    for (const anchor of legalAnchors) {
+      if (text.includes(anchor)) hits++;
+    }
+    if (hits >= 2) anchorScore += hits * 4;
+  }
+
+  return anchorScore;
+};
+
+/**
  * Call Ollama to classify document text into one of the candidate templates
  * If confidence is below 0.5 or document matches none, returns Other
  *
@@ -277,24 +391,144 @@ const classifyDocument = async (fullText, templates = []) => {
     return { templateId: null, templateName: 'Other', confidence: 0.3 };
   }
 
-  const sample = (fullText || '').slice(0, 6000).toLowerCase();
+  const sample = (fullText || '').slice(0, 8000).toLowerCase();
 
-  // 1. Heuristic Keyword Matching Score
+  // 1. High-Precision Domain Anchor Rules (Deterministic Ground Truth)
+  // Lab Report
+  const hasLabTitle =
+    sample.includes('laboratory') ||
+    sample.includes('pathology') ||
+    sample.includes('diagnostic report') ||
+    sample.includes('lab report') ||
+    sample.includes('sample lab') ||
+    sample.includes('test report');
+  const hasMedicalTerms =
+    sample.includes('blood') ||
+    sample.includes('cholesterol') ||
+    sample.includes('serum') ||
+    sample.includes('hemoglobin') ||
+    sample.includes('urine') ||
+    sample.includes('specimen') ||
+    sample.includes('triglyceride') ||
+    sample.includes('wbc') ||
+    sample.includes('rbc') ||
+    sample.includes('platelet') ||
+    sample.includes('reference range') ||
+    sample.includes('reference interval') ||
+    sample.includes('lipid profile');
+  const hasPatient =
+    sample.includes('patient') ||
+    sample.includes('uhid') ||
+    sample.includes('doctor') ||
+    sample.includes('sample id') ||
+    sample.includes('age / gender') ||
+    sample.includes('sex/age');
+
+  if ((hasLabTitle && (hasMedicalTerms || hasPatient)) || (hasPatient && hasMedicalTerms)) {
+    const labTmpl = templates.find((t) => t.name.toLowerCase().includes('lab'));
+    if (labTmpl) {
+      return { templateId: labTmpl._id.toString(), templateName: labTmpl.name, confidence: 1.0 };
+    }
+  }
+
+  // Mark Sheet
+  const hasAcademicTitle =
+    sample.includes('statement of marks') ||
+    sample.includes('mark sheet') ||
+    sample.includes('marks card') ||
+    sample.includes('grade card') ||
+    sample.includes('transcript');
+  const hasAcademicTerms =
+    (sample.includes('semester') || sample.includes('exam session')) &&
+    (sample.includes('marks') ||
+      sample.includes('grade') ||
+      sample.includes('cgpa') ||
+      sample.includes('sgpa') ||
+      sample.includes('subjects'));
+  if (hasAcademicTitle || hasAcademicTerms) {
+    const markTmpl = templates.find((t) => t.name.toLowerCase().includes('mark'));
+    if (markTmpl) {
+      return { templateId: markTmpl._id.toString(), templateName: markTmpl.name, confidence: 1.0 };
+    }
+  }
+
+  // Invoice
+  const hasInvoiceTitle = sample.includes('tax invoice') || sample.includes('bill of supply');
+  const hasTaxTerms =
+    sample.includes('gstin') ||
+    (sample.includes('invoice') &&
+      (sample.includes('cgst') ||
+        sample.includes('sgst') ||
+        sample.includes('igst') ||
+        sample.includes('taxable amount') ||
+        sample.includes('taxable value')));
+  if (hasInvoiceTitle || hasTaxTerms) {
+    const invTmpl = templates.find((t) => t.name.toLowerCase().includes('invoice'));
+    if (invTmpl) {
+      return { templateId: invTmpl._id.toString(), templateName: invTmpl.name, confidence: 1.0 };
+    }
+  }
+
+  // Purchase Order
+  const hasPoTitle =
+    sample.includes('purchase order') ||
+    sample.includes('p.o. number') ||
+    sample.includes('p.o. no') ||
+    (sample.includes('po number') && (sample.includes('vendor') || sample.includes('delivery date')));
+  if (hasPoTitle) {
+    const poTmpl = templates.find((t) => t.name.toLowerCase().includes('purchase'));
+    if (poTmpl) {
+      return { templateId: poTmpl._id.toString(), templateName: poTmpl.name, confidence: 1.0 };
+    }
+  }
+
+  // Contract or Agreement
+  const hasLegalTitle =
+    sample.includes('agreement') ||
+    sample.includes('contract') ||
+    sample.includes('memorandum of understanding') ||
+    sample.includes('nda');
+  const hasLegalTerms =
+    sample.includes('parties hereto') ||
+    sample.includes('governing law') ||
+    sample.includes('in witness whereof') ||
+    (sample.includes('parties') &&
+      (sample.includes('effective date') || sample.includes('termination clause')));
+  if (hasLegalTitle && hasLegalTerms) {
+    const contractTmpl = templates.find(
+      (t) => t.name.toLowerCase().includes('contract') || t.name.toLowerCase().includes('agreement')
+    );
+    if (contractTmpl) {
+      return {
+        templateId: contractTmpl._id.toString(),
+        templateName: contractTmpl.name,
+        confidence: 1.0
+      };
+    }
+  }
+
+  // 2. Keyword & Domain Anchor Scoring for Custom Templates
   let bestCandidate = null;
   let maxScore = 0;
 
   for (const t of templates) {
     let score = 0;
     const nameLower = t.name.toLowerCase();
-    if (sample.includes(nameLower)) score += 3;
+
+    if (sample.includes(nameLower)) score += 5;
 
     if (Array.isArray(t.keywords)) {
       for (const kw of t.keywords) {
-        if (kw && sample.includes(kw.toLowerCase())) {
-          score += 2;
+        if (!kw || kw.length < 2) continue;
+        const kwEscaped = kw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${kwEscaped}\\b`, 'i');
+        if (regex.test(sample)) {
+          score += 3;
         }
       }
     }
+
+    score += calculateDomainAnchorScore(t.name, sample);
 
     if (score > maxScore) {
       maxScore = score;
@@ -302,17 +536,27 @@ const classifyDocument = async (fullText, templates = []) => {
     }
   }
 
-  // 2. Ollama Classification
+  // 3. Ollama Classification with Explicit Candidate Names
   const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
   const model = process.env.LLM_MODEL || 'llama3.2';
 
   const candidatesList = templates
-    .map((t) => `- ID: ${t._id}\n  Name: ${t.name}\n  Description: ${t.description || ''}\n  Keywords: ${(t.keywords || []).join(', ')}`)
+    .map(
+      (t) =>
+        `- Name: ${t.name}\n  Description: ${t.description || ''}\n  Keywords: ${(t.keywords || []).join(', ')}`
+    )
     .join('\n\n');
 
   const prompt = `Classify this document into EXACTLY ONE of the following candidate document types:
 
 ${candidatesList}
+
+Classification Rules:
+- If document contains clinical/medical test results, laboratory investigations, pathology, patient details, blood, hemoglobin, or reference ranges, it is a LAB REPORT.
+- If document contains academic marks, semester, subjects, grades, or transcripts, it is a MARK SHEET.
+- If document contains tax invoice, GSTIN, CGST/SGST/IGST breakdown, it is an INVOICE.
+- If document is a commercial purchase order sent to a vendor with a PO number, it is a PURCHASE ORDER.
+- If document contains clauses, covenants, or terms between contracting parties, it is a CONTRACT OR AGREEMENT.
 
 Document Sample:
 """
@@ -320,9 +564,8 @@ ${sample.slice(0, 4000)}
 """
 
 Return ONLY a JSON object with:
-- "templateId": the exact candidate ID string (or null if none fit)
-- "templateName": candidate name (or "Other")
-- "confidence": confidence between 0.0 and 1.0 (if below 0.5, use null for templateId)
+- "templateName": candidate name matching one of the names above (or "Other")
+- "confidence": confidence between 0.0 and 1.0 (if below 0.5, use "Other")
 - "reason": one brief sentence`;
 
   try {
@@ -339,7 +582,7 @@ Return ONLY a JSON object with:
         format: 'json',
         options: { temperature: 0 }
       }),
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(25000)
     });
 
     if (response.ok) {
@@ -348,24 +591,29 @@ Return ONLY a JSON object with:
 
       const conf = typeof content.confidence === 'number' ? content.confidence : 0.5;
       const matched = templates.find(
-        (t) => t._id.toString() === String(content.templateId) || t.name.toLowerCase() === String(content.templateName).toLowerCase()
+        (t) => t.name.toLowerCase() === String(content.templateName).toLowerCase()
       );
 
+      // Verify Llama's choice is not a hallucination
       if (matched && conf >= 0.5) {
-        return {
-          templateId: matched._id.toString(),
-          templateName: matched.name,
-          confidence: parseFloat(conf.toFixed(2))
-        };
+        if (matched.name === 'Purchase Order' && !sample.includes('purchase order') && !sample.includes('po number') && !sample.includes('p.o.')) {
+          console.warn('[Classifier] Rejected LLM hallucination for Purchase Order on non-PO document');
+        } else {
+          return {
+            templateId: matched._id.toString(),
+            templateName: matched.name,
+            confidence: parseFloat(conf.toFixed(2))
+          };
+        }
       }
     }
   } catch (err) {
-    // Fall back to keyword score if Ollama is unavailable
+    // Fall back to score
   }
 
-  // Keyword score fallback
-  if (bestCandidate && maxScore >= 2) {
-    const conf = Math.min(0.9, 0.5 + maxScore * 0.1);
+  // Anchor + Keyword fallback
+  if (bestCandidate && maxScore >= 4) {
+    const conf = Math.min(0.95, 0.6 + maxScore * 0.05);
     return {
       templateId: bestCandidate._id.toString(),
       templateName: bestCandidate.name,
@@ -387,6 +635,18 @@ const extractWindow = async (windowText, template) => {
   const fieldDescriptions = (template.fields || [])
     .map((f) => {
       let desc = `- ${f.key} (${f.type}): ${f.hint || f.label}`;
+
+      // Enriched context for identifier fields
+      if (f.key === 'patient_id') {
+        desc += ' [Look for Registration ID, Patient ID, UHID, MRN, Sample ID, Barcode, or Patient No; join any split multi-line ID text into one continuous string]';
+      } else if (f.key === 'register_number') {
+        desc += ' [Look for Register Number, Registration No, Roll No, Enrollment No, PRN, Hall Ticket No]';
+      } else if (f.key === 'invoice_number') {
+        desc += ' [Look for Invoice Number, Inv No, Bill No, Tax Invoice #]';
+      } else if (f.key === 'po_number') {
+        desc += ' [Look for PO Number, Purchase Order Number, P.O. No, Order No]';
+      }
+
       if (f.type === 'table' && Array.isArray(f.columns)) {
         const cols = f.columns.map((c) => `${c.key} (${c.type})`).join(', ');
         desc += ` [Table columns: ${cols}]`;
@@ -399,6 +659,7 @@ const extractWindow = async (windowText, template) => {
 Extract structured data from the document matching the schema.
 Return ONLY a valid JSON object matching the requested schema fields.
 Never invent or hallucinate data. If a field is not present in the document text, return null (or [] for lists and tables).
+For identifiers (IDs, numbers): extract the exact alphanumeric value without labels. If an ID is wrapped across lines, join it without whitespace.
 For dates: format as YYYY-MM-DD whenever discernible.
 For numbers: return clean numeric values without currency symbols or commas.
 For tables: extract rows as an array of row objects containing the sub-column fields.`;
@@ -428,7 +689,7 @@ ${windowText}
           format: 'json',
           options: { temperature: 0 }
         }),
-        signal: AbortSignal.timeout(20000)
+        signal: AbortSignal.timeout(25000)
       });
 
       if (!response.ok) throw new Error(`Ollama status ${response.status}`);
@@ -478,7 +739,6 @@ const extractWithLlama = async (fullText, template) => {
 
   console.log(`[Windowed Extraction] Text length ${text.length} exceeds 12000 chars. Running windowed extraction...`);
 
-  // Windowed extraction: 10,000 chars with 500 char overlap
   const WINDOW_SIZE = 10000;
   const STEP = 9500;
   const windowResults = [];
@@ -489,14 +749,12 @@ const extractWithLlama = async (fullText, template) => {
     windowResults.push(windowExtracted);
   }
 
-  // Merge results across windows
   const merged = {};
 
   for (const field of template.fields) {
     const key = field.key;
 
     if (field.type === 'table') {
-      // Concatenate and deduplicate rows
       const allRows = [];
       const seenRowSignatures = new Set();
 
@@ -514,7 +772,6 @@ const extractWithLlama = async (fullText, template) => {
       }
       merged[key] = allRows;
     } else if (field.type === 'list') {
-      // Concatenate unique list items
       const allItems = [];
       const seenItems = new Set();
 
@@ -532,7 +789,6 @@ const extractWithLlama = async (fullText, template) => {
       }
       merged[key] = allItems;
     } else {
-      // Scalars: first non-null/non-empty value across windows
       let val = null;
       for (const wr of windowResults) {
         const v = wr[key];

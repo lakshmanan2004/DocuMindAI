@@ -7,10 +7,27 @@ const builtInTemplates = [
   {
     name: 'Invoice',
     description: 'Tax invoice or bill issued by a supplier for goods or services',
-    keywords: ['invoice', 'tax invoice', 'bill to', 'GSTIN', 'invoice no'],
+    keywords: [
+      'invoice',
+      'tax invoice',
+      'bill to',
+      'gstin',
+      'invoice no',
+      'bill of supply',
+      'taxable value',
+      'cgst',
+      'sgst',
+      'igst'
+    ],
     isBuiltIn: true,
     fields: [
-      { key: 'invoice_number', label: 'Invoice number', type: 'string', required: true },
+      {
+        key: 'invoice_number',
+        label: 'Invoice number',
+        type: 'string',
+        required: true,
+        hint: 'Invoice Number, Inv No, Bill No, Tax Invoice #'
+      },
       { key: 'invoice_date', label: 'Invoice date', type: 'date', required: true },
       { key: 'supplier_name', label: 'Supplier name', type: 'string', required: true },
       { key: 'supplier_gstin', label: 'Supplier GSTIN', type: 'string' },
@@ -76,10 +93,29 @@ const builtInTemplates = [
   {
     name: 'Contract or Agreement',
     description: 'Commercial contract, NDA, service agreement or terms between parties',
-    keywords: ['agreement', 'contract', 'parties', 'undertaking', 'covenant', 'jurisdiction'],
+    keywords: [
+      'agreement',
+      'contract',
+      'parties',
+      'undertaking',
+      'covenant',
+      'jurisdiction',
+      'nda',
+      'mou',
+      'service agreement',
+      'terms of agreement',
+      'first party',
+      'second party'
+    ],
     isBuiltIn: true,
     fields: [
-      { key: 'agreement_title', label: 'Agreement title', type: 'string', required: true },
+      {
+        key: 'agreement_title',
+        label: 'Agreement title',
+        type: 'string',
+        required: true,
+        hint: 'Title of agreement, contract name or memorandum'
+      },
       { key: 'parties', label: 'Parties', type: 'list', required: true },
       { key: 'effective_date', label: 'Effective date', type: 'date' },
       { key: 'end_date', label: 'End date', type: 'date' },
@@ -114,11 +150,33 @@ const builtInTemplates = [
   {
     name: 'Mark Sheet',
     description: 'Academic mark sheet, grade card or transcript from a college or school',
-    keywords: ['mark sheet', 'marks card', 'statement of marks', 'register number', 'semester', 'grade point', 'result'],
+    keywords: [
+      'mark sheet',
+      'marks card',
+      'statement of marks',
+      'register number',
+      'semester',
+      'grade point',
+      'result',
+      'marksheet',
+      'transcript',
+      'grade card',
+      'cgpa',
+      'sgpa',
+      'examination',
+      'roll no',
+      'student'
+    ],
     isBuiltIn: true,
     fields: [
       { key: 'student_name', label: 'Student name', type: 'string', required: true },
-      { key: 'register_number', label: 'Register number', type: 'string', required: true },
+      {
+        key: 'register_number',
+        label: 'Register number',
+        type: 'string',
+        required: true,
+        hint: 'Register Number, Registration No, Roll No, Enrollment No, PRN, Hall Ticket No'
+      },
       { key: 'institution', label: 'Institution / College', type: 'string' },
       { key: 'course', label: 'Course / Degree', type: 'string' },
       { key: 'semester', label: 'Semester', type: 'string' },
@@ -164,11 +222,38 @@ const builtInTemplates = [
   {
     name: 'Lab Report',
     description: 'Medical laboratory diagnostic report, blood test or pathology report',
-    keywords: ['lab report', 'laboratory', 'pathology', 'patient name', 'specimen', 'reference interval', 'investigation'],
+    keywords: [
+      'lab report',
+      'laboratory',
+      'pathology',
+      'patient',
+      'specimen',
+      'reference interval',
+      'investigation',
+      'blood test',
+      'diagnostic',
+      'clinical',
+      'sample lab',
+      'cbc',
+      'hemoglobin',
+      'complete blood count',
+      'urine',
+      'serum',
+      'biochemistry',
+      'haematology',
+      'lipid profile',
+      'culture',
+      'doctor'
+    ],
     isBuiltIn: true,
     fields: [
       { key: 'patient_name', label: 'Patient name', type: 'string', required: true },
-      { key: 'patient_id', label: 'Patient ID / UHID', type: 'string' },
+      {
+        key: 'patient_id',
+        label: 'Patient ID / UHID',
+        type: 'string',
+        hint: 'Registration ID, Patient ID, UHID, MRN, Sample ID, Barcode, or Patient No'
+      },
       { key: 'age', label: 'Age', type: 'string' },
       { key: 'gender', label: 'Gender', type: 'string' },
       { key: 'report_date', label: 'Report date', type: 'date', required: true },
@@ -205,10 +290,26 @@ const builtInTemplates = [
   {
     name: 'Purchase Order',
     description: 'Commercial purchase order sent to a vendor or contractor',
-    keywords: ['purchase order', 'po number', 'vendor', 'delivery date', 'ship to', 'p.o. no'],
+    keywords: [
+      'purchase order',
+      'po number',
+      'purchase order no',
+      'vendor',
+      'delivery date',
+      'ship to',
+      'p.o. no',
+      'po no',
+      'p.o. number'
+    ],
     isBuiltIn: true,
     fields: [
-      { key: 'po_number', label: 'PO number', type: 'string', required: true },
+      {
+        key: 'po_number',
+        label: 'PO number',
+        type: 'string',
+        required: true,
+        hint: 'Purchase Order Number, PO No, P.O. No, Order Number'
+      },
       { key: 'po_date', label: 'PO date', type: 'date', required: true },
       { key: 'vendor_name', label: 'Vendor name', type: 'string', required: true },
       { key: 'delivery_date', label: 'Delivery date', type: 'date' },
@@ -276,4 +377,3 @@ module.exports = {
   builtInTemplates,
   genericTemplate
 };
-

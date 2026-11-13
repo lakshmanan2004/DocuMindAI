@@ -32,8 +32,8 @@ const documentPageSchema = new mongoose.Schema(
   }
 );
 
-// Compound index for querying pages of a specific document in an organization
+// Indexes specified by Section 8 (Page 10)
 documentPageSchema.index({ orgId: 1, documentId: 1, pageNumber: 1 });
+documentPageSchema.index({ text: 'text' }); // Mongo text index for keyword search
 
 module.exports = mongoose.model('DocumentPage', documentPageSchema);
-

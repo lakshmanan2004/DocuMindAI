@@ -17,7 +17,7 @@ const cleanExtractedText = (text) => {
   return text
     .split('\n')
     .map((line) => {
-      // 1. Strip isolated leading/trailing punctuation artifacts (e.g. "= ", "| ", "- ", "* ")
+      // 1. Strip isolated leading/trailing punctuation artifacts
       let l = line.replace(/^[\s=\-_|:!.,~*+•[\]{}()]+\s*/g, '').replace(/\s*[\s=\-_|:!.,~*+•[\]{}()]+$/g, '').trim();
       // 2. Clean table column brackets around numbers: e.g. "[31,270.34]" -> "31,270.34"
       l = l.replace(/\[\s*([\d,.]+)\s*\]/g, '$1');
@@ -35,8 +35,8 @@ const cleanExtractedText = (text) => {
 };
 
 /**
- * Extract text from a document (PDF or Image) page by page
- * If a PDF page is scanned/image-based (under 30 characters), renders page and runs Tesseract OCR
+ * Extract text from a document (PDF or Image) page by page (Spec Section 5 & M3)
+ * If a PDF page has fewer than 30 characters, rasterizes and runs Tesseract OCR.
  * @param {string} filePath - Path to the document
  * @param {string} mimeType - MIME type of the document
  * @returns {Promise<Array<{ pageNumber: number, text: string, ocrConfidence: number }>>}
@@ -55,7 +55,7 @@ const extractDocumentText = async (filePath, mimeType) => {
       {
         pageNumber: 1,
         text: cleaned,
-        ocrConfidence: ocrResult.confidence
+        ocrConfidence: ocrResult.confidence || 0
       }
     ];
   }
@@ -71,7 +71,6 @@ const extractDocumentText = async (filePath, mimeType) => {
       const pages = [];
       let worker = null;
 
-      // Check if any pages need OCR (scanned or image-based PDF)
       const rawPages = textResult.pages || [];
       let screenshots = null;
 
@@ -80,37 +79,49 @@ const extractDocumentText = async (filePath, mimeType) => {
         let pageText = cleanExtractedText(p.text || '');
         let confidence = 100;
 
-        // If digital text is missing or fewer than 30 characters, run OCR on the rendered page
+        // If digital text is fewer than 30 characters, attempt rasterization and OCR
         if (pageText.length < 30) {
-          console.log(`[PDF Text] Page ${p.num} has no digital text. Rendering raster page for OCR...`);
-          if (!screenshots) {
-            screenshots = await parser.getScreenshot({ imageBuffer: true, scale: 2.0 });
-          }
-
-          const pageScreen = screenshots.pages.find((sp) => sp.pageNumber === p.num);
-          if (pageScreen && pageScreen.data) {
-            if (!worker) {
-              worker = await createWorker('eng', 1, { cachePath: SERVER_DIR });
+          try {
+            if (!screenshots && parser.getScreenshot) {
+              screenshots = await parser.getScreenshot({ imageBuffer: true, scale: 2.0 }).catch(() => null);
             }
-            const ocrRes = await worker.recognize(Buffer.from(pageScreen.data));
-            pageText = cleanExtractedText(ocrRes.data.text || '');
-            confidence = Math.round(ocrRes.data.confidence || 75);
-            console.log(`[PDF OCR] Page ${p.num} OCR completed with confidence ${confidence}%`);
+
+            if (screenshots && screenshots.pages) {
+              const pageScreen = screenshots.pages.find((sp) => sp.pageNumber === p.num);
+              if (pageScreen && pageScreen.data) {
+                if (!worker) {
+                  worker = await createWorker('eng', 1, {
+                    cachePath: SERVER_DIR,
+                    errorHandler: () => {}
+                  });
+                }
+                const ocrRes = await worker.recognize(Buffer.from(pageScreen.data));
+                const ocrCleaned = cleanExtractedText(ocrRes.data?.text || '');
+                if (ocrCleaned.length > pageText.length) {
+                  pageText = ocrCleaned;
+                  confidence = Math.round(ocrRes.data?.confidence || 75);
+                }
+              }
+            }
+          } catch (ocrErr) {
+            console.warn(`[PDF OCR Warning] Page ${p.num} rasterization failed, using digital text:`, ocrErr.message);
           }
         }
 
         pages.push({
-          pageNumber: p.num,
+          pageNumber: p.num || (i + 1),
           text: pageText,
           ocrConfidence: confidence
         });
       }
 
       if (worker) {
-        await worker.terminate();
+        try {
+          await worker.terminate();
+        } catch (e) {}
       }
 
-      // Fallback if pages array was empty
+      // Fallback if pages array was empty but general text was returned
       if (pages.length === 0 && textResult.text) {
         return [
           {
@@ -119,6 +130,14 @@ const extractDocumentText = async (filePath, mimeType) => {
             ocrConfidence: 100
           }
         ];
+      }
+
+      if (pages.length === 0) {
+        pages.push({
+          pageNumber: 1,
+          text: '',
+          ocrConfidence: 0
+        });
       }
 
       return pages;

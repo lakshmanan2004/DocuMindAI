@@ -10,7 +10,7 @@ Rules: Tier 1 is mandatory (M0 to M8). Prove every milestone with all 5 document
 | Milestone | Title | Scope | Status | Acceptance Tests |
 | :--- | :--- | :--- | :--- | :--- |
 | **M0** | **Setup & Foundation** | Repos, env, Mongo Atlas, Redis, Ollama, health route, seed skeleton, design system (tokens, glass, Lite mode, base UI, `/ui` demo) | ✅ Complete | • Ollama responds (`llama3.2`, `nomic-embed-text`)<br>• `/health` returns 200 OK<br>• Redis verified / resilient fallback active<br>• Embedding length 768 recorded in DECISIONS.md<br>• `/ui` showcases all base components in Light, Dark, Lite modes |
-| **M1** | **Authentication, Org & Users** | Register org + clone 5 built-in templates, JWT with `id, orgId, role`, 4 RBAC roles (Admin, Employee, Reviewer, Viewer), deactivated user check, rate limiting | ⏳ Pending | • 2 orgs isolated<br>• 401 without token<br>• 403 on forbidden role<br>• Deactivated user blocked |
+| **M1** | **Authentication, Org & Users** | Register org + clone 5 built-in templates, JWT with `id, orgId, role` (8h expiry), 4 RBAC roles (Admin, Employee, Reviewer, Viewer), deactivated user check, rate limiting | ✅ Complete | • 2 orgs isolated (zero data leakage)<br>• 401 without token / invalid token<br>• 403 on forbidden role<br>• Deactivated user immediately blocked on login & session token<br>• 5 built-in templates cloned upon org registration |
 | **M2** | **Upload, Library & Folders** | Multi-file upload (PDF, PNG, JPG, JPEG), file signature + size check, single-level folders, library table, authenticated file preview | ⏳ Pending | • 5 mixed files uploaded<br>• Filters and preview work<br>• Bad file rejected<br>• Delete removes doc, pages, chunks, extraction |
 | **M3** | **Text Extraction & OCR** | `pdf-parse` per page, pdftoppm/tesseract OCR for pages < 30 chars, sharp cleanup for images, page-wise text stored | ⏳ Pending | • Digital PDF, scanned PDF, phone photo all produce page-wise text<br>• Corrupt file marks `failed` gracefully |
 | **M4** | **Template Engine & 5 Built-ins** | Generic field types (string, number, date, boolean, list, table), validation engine, 5 built-in templates seeded, template builder UI & test sandbox | ⏳ Pending | • New org gets 5 templates<br>• Builder creates table fields and rules<br>• Test box tests text without saving |
@@ -34,7 +34,7 @@ Rules: Tier 1 is mandatory (M0 to M8). Prove every milestone with all 5 document
 - [ ] Core: No invoice-specific or GST-specific code outside template data and `validate.js` rule functions
 - [ ] Core: Five built-in templates seeded per organization; custom template created in UI works end-to-end
 - [ ] Core: Table fields supported in extraction, review grid, export
-- [ ] Auth: Register organization, login, users, four roles enforced on API and UI
+- [x] Auth: Register organization, login, users, four roles enforced on API and UI
 - [ ] Docs: Multi-upload, library filters, folders, preview, delete, reprocess
 - [ ] AI: Text extraction for digital PDF, scanned PDF, image; page-wise
 - [ ] AI: Auto-classification with Change type; Other fallback

@@ -53,3 +53,4 @@ This file tracks all explicit architectural decisions, design choices, and envir
 - **Solid Surfaces**: Content tables, document viewer, extraction grids, and forms use solid backgrounds (`#FFFFFF` in light mode, `#1C1C1E` in dark mode) for maximum rendering performance and zero frame drops.
 - **Tokens**: Stored in `client/src/styles/tokens.css` with native Apple system font stack (`-apple-system`, `Inter`, `system-ui`), standard iOS system colors (`#007AFF`, `#34C759`, `#FF9500`, `#FF3B30`, `#5856D6`), and 8px grid spacing.
 - **Lite Mode**: Automatically activated on weak devices (`navigator.hardwareConcurrency <= 4` or `navigator.deviceMemory <= 4`) or via manual toggle in Settings, removing all backdrop blur filters for instant performance.
+

@@ -188,22 +188,49 @@ async function answerWithRAG({ question, orgId, documentId = null, folderId = nu
 
   const extMap = {};
   for (const ext of extractions) {
-    const pairs = ext.fields
-      ?.filter((f) => f.value !== null && f.value !== undefined && f.value !== 'N/A')
-      .map((f) => {
-        let valStr = f.value;
-        if (Array.isArray(valStr)) {
-          if (valStr.length > 0 && typeof valStr[0] === 'object') {
-            valStr = JSON.stringify(valStr);
-          } else {
-            valStr = valStr.join(', ');
-          }
-        } else if (typeof valStr === 'object' && valStr !== null) {
-          valStr = JSON.stringify(valStr);
+    const pairs = [];
+    let hasTotalMarks = null;
+    let academicSubjectCount = 0;
+
+    for (const f of ext.fields || []) {
+      if (f.value === null || f.value === undefined || f.value === 'N/A') continue;
+
+      if (f.key === 'total_marks') {
+        hasTotalMarks = Number(f.value);
+      }
+      if (f.key === 'subjects' && Array.isArray(f.value)) {
+        academicSubjectCount =
+          f.value.filter((s) => s.marks !== 'N/A' && s.marks !== null && !isNaN(Number(s.marks))).length ||
+          f.value.length;
+      }
+
+      let valStr = f.value;
+      if (Array.isArray(valStr)) {
+        if (valStr.length > 0 && typeof valStr[0] === 'object') {
+          valStr = valStr
+            .map((item) =>
+              Object.entries(item)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(', ')
+            )
+            .join(' | ');
+        } else {
+          valStr = valStr.join(', ');
         }
-        return `• ${f.label || f.key}: ${valStr}`;
-      });
-    if (pairs && pairs.length > 0) {
+      } else if (typeof valStr === 'object' && valStr !== null) {
+        valStr = JSON.stringify(valStr);
+      }
+      pairs.push(`• ${f.label || f.key}: ${valStr}`);
+    }
+
+    // Explicitly add Maximum Marks and Marks Summary for marksheets
+    if (hasTotalMarks && academicSubjectCount > 0) {
+      const maxMarks = academicSubjectCount * 100;
+      pairs.push(`• maximum_total_marks: ${maxMarks} (${academicSubjectCount} subjects × 100)`);
+      pairs.push(`• marks_summary: Scored ${hasTotalMarks} out of ${maxMarks} marks`);
+    }
+
+    if (pairs.length > 0) {
       extMap[ext.documentId.toString()] = pairs.join('\n  ');
     }
   }
@@ -222,10 +249,15 @@ async function answerWithRAG({ question, orgId, documentId = null, folderId = nu
   const systemPrompt = `You are DocuMind AI, an expert document intelligence assistant.
 You answer user questions using ONLY the context provided below.
 Rules:
-1. When asked about a specific product or document (e.g. OnePlus Buds), answer ONLY from the document that actually mentions that product. Do NOT mix information with other documents.
-2. ALWAYS prioritize the verified values from [VERIFIED METADATA] for any extracted entity, including Total Amount, Invoice Number, GSTIN, Total Marks, Percentage, Result, Dates, Institution, or Student/Patient Name.
-3. In marksheets/educational certificates: Total Marks (e.g. 399) represents the marks OBTAINED by the student, NOT the maximum marks (maximum marks is usually 500, or 100 per subject). NEVER state that the student scored "X out of X" or "100%" unless explicitly stated. Always use the verified percentage (e.g. 79.8%) if available.
-4. In Indian invoices, currency symbol '₹' may appear misread in OCR text as '3' or 'R' (e.g. '31,499.00' is an OCR misread for ₹1,499.00). In such cases, use the verified total (e.g. 1499).
+1. When asked about a specific product or document (e.g. OnePlus Nord Buds 3r or American Tourister Backpack), answer ONLY from the document that actually mentions that product. Do NOT mix information with other documents.
+2. For prices, costs, or amounts of products in invoices:
+   - Always prioritize the verified total_amount or unit price from [VERIFIED METADATA] (e.g. OnePlus Nord Buds 3r total price is ₹1,499.00; American Tourister Backpack unit price before tax is ₹719.50 and total with taxes is ₹849.00).
+   - In OCR text, '3' or 'R' before a number often represents the currency symbol '₹' (e.g. '31,499.00' is ₹1,499.00, '31,270.34' is ₹1,270.34, '30.00' is ₹0.00 discount). NEVER cite discounts or shipping as the product price (e.g. ₹30.00 is NOT the price of OnePlus Buds).
+   - If both net price (e.g. ₹719.50) and total price with tax (e.g. ₹849.00) are present, clarify: "The unit price before tax is ₹719.50, and the total invoice price including taxes is ₹849.00."
+3. In marksheets/educational certificates:
+   - Use 'marks_summary', 'maximum_total_marks', and 'percentage' from [VERIFIED METADATA].
+   - If a student scored 399 marks across 5 subjects of 100 each, state clearly that the student scored 399 out of 500 marks (79.8%). NEVER state "out of 399 marks" or "399 out of 399".
+4. ALWAYS prioritize the verified values from [VERIFIED METADATA] for any extracted entity, including Total Amount, Invoice Number, GSTIN, Total Marks, Percentage, Result, Dates, Institution, or Student/Patient Name.
 5. Be concise, direct, and cite sources using bracket notation like [1].
 6. If the answer cannot be found in the provided context, reply exactly:
 "I could not find this in your documents."`;

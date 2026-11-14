@@ -132,7 +132,7 @@ const Review = () => {
         const rows = Array.isArray(f.value) ? [...f.value] : [];
         const sampleKeys = rows.length > 0 ? Object.keys(rows[0]) : ['item', 'amount'];
         const newRow = {};
-        for (const k of sampleKeys) newRow[k] = '';
+        for (const k of sampleKeys) newRow[k] = 'N/A';
         return { ...f, value: [...rows, newRow], edited: true };
       })
     );
@@ -557,7 +557,7 @@ const Review = () => {
                                             <input
                                               type="text"
                                               disabled={!canReview}
-                                              value={row[colKey] !== null && row[colKey] !== undefined ? row[colKey] : ''}
+                                              value={row[colKey] !== null && row[colKey] !== undefined && row[colKey] !== '' ? row[colKey] : 'N/A'}
                                               onChange={(e) =>
                                                 handleTableCellChange(field.key, rIdx, colKey, e.target.value)
                                               }

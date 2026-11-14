@@ -368,15 +368,31 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
   }
 
   // 5. Mark Sheet specifics
-  // Generic Institution / College / School Extraction
-  if (!result.institution || result.institution.length < 3 || /^(?:not\s*specified|null|n\/a|institution|college|school)$/i.test(result.institution)) {
-    const instLabelMatch = fullText.match(/(?:Name\s*of\s*(?:Institute|Institution|School|College|University|Academy)|School\s*Name|College\s*Name|Institute\s*Name|Institution\s*Name)\s*[:+.-]?\s*([^\n\r]+)/i);
+  // Look for specific School / College / Institute line (School name takes priority over educational board)
+  const docLines = fullText.split(/[\r\n]+/);
+  let detectedSchool = null;
+
+  for (const line of docLines) {
+    const trimmed = line.trim();
+    const labelMatch = trimmed.match(/\b(?:(?:विद्यालय\s*)?School(?:\s*name|name)?|College(?:\s*name|name)?|Institute(?:\s*name|name)?)\s*[:+.-]?\s*([A-Za-z0-9\s.,&'()-]{4,100})/i);
+    if (labelMatch) {
+      let cand = labelMatch[1].replace(/^name\s*[:+.-]?\s*/i, '').trim();
+      if (!/^(?:examination|board|leaving|statement|result|education|standards?)/i.test(cand) && cand.length >= 5) {
+        detectedSchool = cand;
+        break;
+      }
+    }
+  }
+
+  if (detectedSchool) {
+    result.institution = detectedSchool;
+  } else if (!result.institution || result.institution.length < 3 || /^(?:not\s*specified|null|n\/a|institution|college|school)$/i.test(result.institution)) {
+    const instLabelMatch = fullText.match(/(?:Name\s*of\s*(?:Institute|Institution|School|College|University|Academy)|Institution\s*Name)\s*[:+.-]?\s*([^\n\r]+)/i);
     if (instLabelMatch) {
       result.institution = instLabelMatch[1].trim();
     } else {
       // Look at the top masthead lines (first 10 lines)
-      const lines = fullText.split(/[\r\n]+/).slice(0, 10);
-      for (const line of lines) {
+      for (const line of docLines.slice(0, 10)) {
         const trimmed = line.trim();
         if (/\b(?:University|Institute|College|School|Academy|Vidyalaya|Polytechnic)\b/i.test(trimmed) && trimmed.length >= 8 && !/^(?:statement|marksheet|report|marks card)/i.test(trimmed)) {
           result.institution = trimmed;
@@ -397,7 +413,7 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
 
   // Generic Course / Degree Extraction
   if (!result.course || result.course.length < 3 || /^(?:not\s*specified|null|n\/a)$/i.test(result.course)) {
-    const courseMatch = fullText.match(/\b(Bachelor\s*of\s*[A-Za-z\s]+|Master\s*of\s*[A-Za-z\s]+|B\.?[A-Za-z]{2,5}(?:\s*\([A-Za-z\s&,.-]+\))?|M\.?[A-Za-z]{2,5}(?:\s*\([A-Za-z\s&,.-]+\))?|Diploma\s*in\s*[A-Za-z\s]+|Class\s*(?:X|XII|10th|12th))\b/i);
+    const courseMatch = fullText.match(/\b(Bachelor\s*of\s*[A-Za-z\s]+|Master\s*of\s*[A-Za-z\s]+|B\.?[A-Za-z]{2,5}(?:\s*\([A-Za-z\s&,.-]+\))?|M\.?[A-Za-z]{2,5}(?:\s*\([A-Za-z\s&,.-]+\))?|Diploma\s*in\s*[A-Za-z\s]+|Class\s*(?:X|XII|10th|12th)|\bX\s*STANDARD\b)\b/i);
     if (courseMatch) result.course = courseMatch[0].trim();
   } else {
     result.course = result.course.replace(/~.*$/, '').trim();
@@ -407,29 +423,41 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
     }
   }
 
-  // Semester vs Academic Year
-  const hasSem1 = /\b(?:I|1st)\s*SEMESTER\b/i.test(fullText);
-  const hasSem2 = /\b(?:II|2nd)\s*SEMESTER\b/i.test(fullText);
-  if (hasSem1 && hasSem2) {
-    result.semester = 'Semester I & II';
-  } else if (hasSem1) {
-    result.semester = 'Semester I';
-  } else if (hasSem2) {
-    result.semester = 'Semester II';
-  } else if (!result.semester || /^(?:not\s*specified|null|n\/a)$/i.test(result.semester)) {
-    const semMatch =
-      fullText.match(/\b(First|Second|Third|Fourth|Final|\d+(?:st|nd|rd|th)?)\s*Year\b/i) ||
-      fullText.match(/\b(Semester\s*[-:]?\s*(?:[IVXLCDM\d]+|\d+(?:st|nd|rd|th)?)|Sem\s*[-:]?\s*[IVXLCDM\d]+)\b/i);
-    if (semMatch) {
-      result.semester = semMatch[0].trim();
-    } else {
-      result.semester = null;
+  // School mark sheets (Class X, XII, Secondary School, SSLC, CBSE, Matric) do NOT have semesters
+  const isSchoolCertificate = /\b(?:School|SSLC|HSC|Secondary\s*School|High\s*School|Matric|CBSE|ICSE|Class\s*(?:X|XII|10|12)|\d+(?:th)?\s*Standard)\b/i.test(fullText);
+  if (isSchoolCertificate) {
+    result.semester = null;
+  } else {
+    // Semester vs Academic Year for college/university
+    const hasSem1 = /\b(?:I|1st)\s*SEMESTER\b/i.test(fullText);
+    const hasSem2 = /\b(?:II|2nd)\s*SEMESTER\b/i.test(fullText);
+    if (hasSem1 && hasSem2) {
+      result.semester = 'Semester I & II';
+    } else if (hasSem1) {
+      result.semester = 'Semester I';
+    } else if (hasSem2) {
+      result.semester = 'Semester II';
+    } else if (!result.semester || /^(?:not\s*specified|null|n\/a)$/i.test(result.semester)) {
+      const semMatch =
+        fullText.match(/\b(First|Second|Third|Fourth|Final|\d+(?:st|nd|rd|th)?)\s*Year\b/i) ||
+        fullText.match(/\b(Semester\s*[-:]?\s*(?:[IVXLCDM\d]+|\d+(?:st|nd|rd|th)?)|Sem\s*[-:]?\s*[IVXLCDM\d]+)\b/i);
+      if (semMatch) {
+        result.semester = semMatch[0].trim();
+      } else {
+        result.semester = null;
+      }
     }
   }
 
-  // Exam session (Never allow hallucinated sessions like Nov-Dec 2026!)
+  // A semester should never be a date or exam month/year (like MAR 2020)
+  if (result.semester && /\b(?:\d{4}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i.test(result.semester)) {
+    result.semester = null;
+  }
+
+  // Exam session
   const sessionMatch =
-    fullText.match(/(?:Session|Exam(?:\s*session)?)\s*[:.-]?\s*([A-Za-z]{3,9}(?:-[A-Za-z]{3,9})?\s*\d{4}|\d{4}\s*[-–]\s*\d{2,4})/i);
+    fullText.match(/(?:Session|Exam(?:\s*session)?)\s*[:.-]?\s*([A-Za-z]{3,9}\s*\d{4}|\d{4}\s*[-–]\s*\d{2,4}|\b\d{4}\b)/i) ||
+    fullText.match(/(?:SECONDARY\s*SCHOOL\s*EXAMINATION|HIGHER\s*SECONDARY\s*EXAMINATION|BOARD\s*EXAMINATION|EXAMINATION)[,\s]+(\d{4})/i);
   if (sessionMatch) {
     result.exam_session = sessionMatch[1].replace(/\s+/g, ' ').trim();
   } else {
@@ -443,6 +471,8 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
   // Subjects table extraction & cleanup
   if (Array.isArray(result.subjects) && result.subjects.length > 0) {
     const lowerDoc = fullText.toLowerCase();
+    const docLines = fullText.split(/[\r\n]+/);
+
     result.subjects = result.subjects
       .map((s) => {
         if (!s) return null;
@@ -451,10 +481,29 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
         let marks = s.marks !== null && s.marks !== undefined && !isNaN(Number(s.marks)) ? Number(s.marks) : null;
         let grade = s.grade ? String(s.grade).trim() : null;
 
-        // Discard summary / header keywords mistaken as subjects
-        if (/^(?:total|grand\s*total|grace\s*marks|carryover|result|examination|session|semester|theory|practical|sessional|maximum\s*marks|marks\s*obtained|controller|registrar|subjed|credit|cgpa|sgpa|status)\b/i.test(name)) {
+        // Discard header rows mistakenly parsed as subjects (e.g. "THEORY", "PRACTICAL", "SUBJECT", "MARKS OBTAINED")
+        const isHeaderWord = (str) =>
+          /^(?:theory|practical|internal|external|assessment|maximum|marks\s*obtained|total|minimum|credit|status|grade|subjed|subject\s*code|subject\s*name)\b/i.test(String(str || '').trim());
+        if (isHeaderWord(name) || isHeaderWord(code)) {
           return null;
         }
+
+        // Detect if subject name was mistakenly placed into code (e.g. code: "TAMIL", name: "078 ZERO SEVEN")
+        const numberWordsRegex = /\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|seventy|eighty|ninety|hundred)\b/i;
+        if (code && !/\d/.test(code) && (numberWordsRegex.test(name) || /^\d+/.test(name))) {
+          name = code;
+          code = null;
+        }
+
+        // Clean subject name of trailing numeric words or leaked numbers
+        name = name
+          .replace(/\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|seventy|eighty|ninety|hundred).*$/i, '')
+          .replace(/\s*\d+.*$/, '')
+          .replace(/^[|:\-_*~•[\]{}()\s]+/, '')
+          .replace(/[|:\-_*~•[\]{}()\s]+$/, '')
+          .trim();
+
+        if (!name || name.length < 2) return null;
 
         // Clean code: if code equals name, or equals course, or is excessively long (>12 chars), or is placeholder
         if (code) {
@@ -469,19 +518,48 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
           }
         }
 
-        // Clean grade: real grades are letter grades (A+, A, B, P, Pass, etc.). If grade contains numbers (e.g. sessional marks like 23, 12), clear it
-        if (grade && (/\d/.test(grade) || /^(?:null|n\/a|-)$/i.test(grade))) {
+        // Discard summary rows
+        if (/^(?:total|grand\s*total|grace\s*marks|carryover|result|examination|session|semester|controller|registrar|cgpa|sgpa)\b/i.test(name)) {
+          return null;
+        }
+
+        // Grounding: find the line corresponding to this subject in fullText
+        const subjectLine = docLines.find((l) => l.toLowerCase().includes(name.toLowerCase()));
+        if (subjectLine) {
+          // Look for triad of numbers (e.g. "052 018 070" or "054 025 079") where Theory + Practical = Total
+          const numTriad = subjectLine.match(/\b(\d{2,3})\s+(\d{2,3})\s+(\d{2,3})\b/);
+          if (numTriad) {
+            const n1 = parseInt(numTriad[1], 10);
+            const n2 = parseInt(numTriad[2], 10);
+            const n3 = parseInt(numTriad[3], 10);
+            if (n1 + n2 === n3) {
+              marks = n3; // ALWAYS use the final Total mark (Theory + Internal/Practical)
+            }
+          } else {
+            // Check for single 2-3 digit mark e.g. "078 ZERO SEVEN"
+            const singleMatch = subjectLine.match(/\b0?([1-9]\d{1,2})\s+(?:ZERO|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|SEVENTY|EIGHTY|NINETY)\b/i);
+            if (singleMatch) {
+              marks = parseInt(singleMatch[1], 10);
+            }
+          }
+
+          // Extract positional grade (C1, B2, A2, A1, D1, P, PASS)
+          const gradeMatch = subjectLine.match(/\b([A-E][1-2]|[A-F][+-]?|P|PASS)\b(?:\s*\(|\s*$|\s+[A-Za-z]|$)/i);
+          if (gradeMatch && (!grade || grade === 'null')) {
+            grade = gradeMatch[1].toUpperCase();
+          }
+        }
+
+        // Clean grade: allow letter grades (A+, B, P, PASS) and positional grades (C1, B2, A2, D1).
+        // Discard purely numeric sessional marks (e.g. 23, 12).
+        const isValidGrade = (g) => /^(?:[A-E][1-2]|[A-F][+-]?|O|P|F|PASS|FAIL)$/i.test(String(g || '').trim());
+        if (grade && !isValidGrade(grade)) {
           grade = null;
         }
 
-        // Grounding: must match text in document
-        const hasNameInText = name.length >= 3 && lowerDoc.includes(name.toLowerCase());
-        const hasCodeInText = code && code.length >= 2 && lowerDoc.includes(code.toLowerCase());
-        if (!hasNameInText && !hasCodeInText) return null;
-
         return {
           code: code || null,
-          name: name || (code ? `Subject ${code}` : 'Subject'),
+          name: name,
           marks: marks !== null ? marks : null,
           grade: grade || null
         };

@@ -11,7 +11,7 @@ async function reprocessUserDocs() {
   await mongoose.connect(process.env.MONGO_URI);
 
   const docs = await Document.find({
-    originalName: { $in: [/sterling/i, /cbc/i, /screenshot/i] }
+    originalName: { $in: [/cbse/i, /whatsapp/i] }
   });
 
   for (const doc of docs) {
@@ -26,6 +26,9 @@ async function reprocessUserDocs() {
     ext.fields.forEach(f => {
       if (f.type === 'table') {
         console.log(`  ${f.key} (table with ${f.value ? f.value.length : 0} rows)`);
+        if (f.value && f.value.length > 0) {
+          f.value.slice(0, 5).forEach((r, idx) => console.log(`     ${idx+1}.`, JSON.stringify(r)));
+        }
       } else {
         console.log(`  ${f.key}: ${JSON.stringify(f.value)} (conf: ${f.confidence})`);
       }
@@ -41,4 +44,3 @@ reprocessUserDocs()
     console.error(e);
     process.exit(1);
   });
-

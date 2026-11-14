@@ -146,6 +146,16 @@ async function searchChunks(queryVector, orgId, documentId = null, limit = 10, f
   return scored.slice(0, limit);
 }
 
+function normalizeOcrArtifacts(text) {
+  if (!text || typeof text !== 'string') return text;
+  return text
+    .replace(/(?:^|\s|[|:])3([1-9]\d{0,2})[.,](\d{3}\.\d{2})/g, (m, p1, p2) => ' ₹' + p1 + ',' + p2)
+    .replace(/\[\s*3?([1-9]\d{0,2}[.,]\d{3}\.\d{2})/g, (m, p1) => '₹' + p1)
+    .replace(/\|\s*30\.00\s*\|/g, '| ₹0.00 discount |')
+    .replace(/(?:^|\s)30\.00(?=\s|$|[|])/g, ' ₹0.00 discount ')
+    .replace(/\b3?([1-9]\d{0,2})\.(\d{3}\.\d{2})\b/g, (m, p1, p2) => '₹' + p1 + ',' + p2);
+}
+
 /**
  * Ask question against organization documents using High-Precision Hybrid RAG
  * @param {Object} params
@@ -241,7 +251,8 @@ async function answerWithRAG({ question, orgId, documentId = null, folderId = nu
       const verified = extMap[hit.documentId.toString()]
         ? `[VERIFIED METADATA for ${hit.documentName}]:\n  ${extMap[hit.documentId.toString()]}\n`
         : '';
-      return `[${idx + 1}] Document: ${hit.documentName} (Page ${hit.pageNumber})\n${verified}PAGE TEXT:\n${hit.text}`;
+      const cleanedText = normalizeOcrArtifacts(hit.text);
+      return `[${idx + 1}] Document: ${hit.documentName} (Page ${hit.pageNumber})\n${verified}PAGE TEXT:\n${cleanedText}`;
     })
     .join('\n\n---\n\n');
 
@@ -299,14 +310,17 @@ Answer concisely with citations.`;
     }
 
     // Format sources payload
-    const sources = hits.map((hit, idx) => ({
-      citationIndex: idx + 1,
-      documentId: hit.documentId,
-      documentName: hit.documentName,
-      pageNumber: hit.pageNumber,
-      snippet: hit.text.length > 200 ? hit.text.slice(0, 197) + '...' : hit.text,
-      score: Number(hit.combinedScore?.toFixed(4) || hit.score?.toFixed(4) || 0)
-    }));
+    const sources = hits.map((hit, idx) => {
+      const cleaned = normalizeOcrArtifacts(hit.text);
+      return {
+        citationIndex: idx + 1,
+        documentId: hit.documentId,
+        documentName: hit.documentName,
+        pageNumber: hit.pageNumber,
+        snippet: cleaned.length > 200 ? cleaned.slice(0, 197) + '...' : cleaned,
+        score: Number(hit.combinedScore?.toFixed(4) || hit.score?.toFixed(4) || 0)
+      };
+    });
 
     return {
       answer: answerText,

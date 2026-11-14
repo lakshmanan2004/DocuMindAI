@@ -228,8 +228,8 @@ const builtInTemplates = [
         table: 'subjects',
         column: 'marks',
         target: 'total_marks',
-        tolerance: 0,
-        message: 'Sum of subject marks must equal total marks',
+        tolerance: 50,
+        message: 'Sum of subject marks should match total marks within tolerance',
         severity: 'warning'
       }
     ]

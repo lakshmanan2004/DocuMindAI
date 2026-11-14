@@ -368,6 +368,33 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
   }
 
   // 5. Mark Sheet specifics
+  // Generic Institution / College / School Extraction
+  if (!result.institution || result.institution.length < 3 || /^(?:not\s*specified|null|n\/a|institution|college|school)$/i.test(result.institution)) {
+    const instLabelMatch = fullText.match(/(?:Name\s*of\s*(?:Institute|Institution|School|College|University|Academy)|School\s*Name|College\s*Name|Institute\s*Name|Institution\s*Name)\s*[:+.-]?\s*([^\n\r]+)/i);
+    if (instLabelMatch) {
+      result.institution = instLabelMatch[1].trim();
+    } else {
+      // Look at the top masthead lines (first 10 lines)
+      const lines = fullText.split(/[\r\n]+/).slice(0, 10);
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (/\b(?:University|Institute|College|School|Academy|Vidyalaya|Polytechnic)\b/i.test(trimmed) && trimmed.length >= 8 && !/^(?:statement|marksheet|report|marks card)/i.test(trimmed)) {
+          result.institution = trimmed;
+          break;
+        }
+      }
+    }
+  }
+
+  // Clean institution of joined metadata (Enrollment No, Roll No, Affiliated to, etc.)
+  if (result.institution && typeof result.institution === 'string') {
+    result.institution = result.institution
+      .replace(/(?:Enrollment\s*(?:No\.?|Number)|Roll\s*(?:No\.?|Number)|Reg(?:istration)?\s*(?:No\.?|Number)|Affiliated|Phone|Email|Address|Established).*$/i, '')
+      .replace(/^[+~:.-]+/, '')
+      .replace(/[+~:.-]+$/, '')
+      .trim();
+  }
+
   // Generic Course / Degree Extraction
   if (!result.course || result.course.length < 3 || /^(?:not\s*specified|null|n\/a)$/i.test(result.course)) {
     const courseMatch = fullText.match(/\b(Bachelor\s*of\s*[A-Za-z\s]+|Master\s*of\s*[A-Za-z\s]+|B\.?[A-Za-z]{2,5}(?:\s*\([A-Za-z\s&,.-]+\))?|M\.?[A-Za-z]{2,5}(?:\s*\([A-Za-z\s&,.-]+\))?|Diploma\s*in\s*[A-Za-z\s]+|Class\s*(?:X|XII|10th|12th))\b/i);
@@ -413,8 +440,61 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
     }
   }
 
-  // Total Marks from Grand Total
-  const grandTotalMatch = fullText.match(/(?:Grand\s*Total|Total\s*Marks|Total)\s*[:.-]?\s*([0-9]{2,4})(?:\s*[\/|]\s*([0-9]{2,4}))?/i);
+  // Subjects table extraction & cleanup
+  if (Array.isArray(result.subjects) && result.subjects.length > 0) {
+    const lowerDoc = fullText.toLowerCase();
+    result.subjects = result.subjects
+      .map((s) => {
+        if (!s) return null;
+        let code = s.code ? String(s.code).trim() : null;
+        let name = s.name ? String(s.name).trim() : '';
+        let marks = s.marks !== null && s.marks !== undefined && !isNaN(Number(s.marks)) ? Number(s.marks) : null;
+        let grade = s.grade ? String(s.grade).trim() : null;
+
+        // Discard summary / header keywords mistaken as subjects
+        if (/^(?:total|grand\s*total|grace\s*marks|carryover|result|examination|session|semester|theory|practical|sessional|maximum\s*marks|marks\s*obtained|controller|registrar|subjed|credit|cgpa|sgpa|status)\b/i.test(name)) {
+          return null;
+        }
+
+        // Clean code: if code equals name, or equals course, or is excessively long (>12 chars), or is placeholder
+        if (code) {
+          const codeLower = code.toLowerCase();
+          if (
+            codeLower === name.toLowerCase() ||
+            (result.course && codeLower === result.course.toLowerCase()) ||
+            code.length > 12 ||
+            /^(?:none|null|n\/a|nil|-)$/i.test(code)
+          ) {
+            code = null;
+          }
+        }
+
+        // Clean grade: real grades are letter grades (A+, A, B, P, Pass, etc.). If grade contains numbers (e.g. sessional marks like 23, 12), clear it
+        if (grade && (/\d/.test(grade) || /^(?:null|n\/a|-)$/i.test(grade))) {
+          grade = null;
+        }
+
+        // Grounding: must match text in document
+        const hasNameInText = name.length >= 3 && lowerDoc.includes(name.toLowerCase());
+        const hasCodeInText = code && code.length >= 2 && lowerDoc.includes(code.toLowerCase());
+        if (!hasNameInText && !hasCodeInText) return null;
+
+        return {
+          code: code || null,
+          name: name || (code ? `Subject ${code}` : 'Subject'),
+          marks: marks !== null ? marks : null,
+          grade: grade || null
+        };
+      })
+      .filter(Boolean);
+  }
+
+  // Total Marks (Marks Obtained)
+  const sumOfSubjectMarks = Array.isArray(result.subjects)
+    ? result.subjects.reduce((sum, s) => sum + (Number(s.marks) || 0), 0)
+    : 0;
+
+  const grandTotalMatch = fullText.match(/(?:Grand\s*Total|Total\s*(?:Marks)?\s*Obtained|Marks\s*Obtained)\s*[:.-]?\s*([0-9]{2,4})(?:\s*[\/|]\s*([0-9]{2,4}))?/i);
   if (grandTotalMatch) {
     const marksNum = parseFloat(grandTotalMatch[1]);
     if (!isNaN(marksNum) && marksNum > 50) {
@@ -422,26 +502,23 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
     }
   }
 
-  // Result (Pass/Fail)
-  const resultMatch = fullText.match(/\b(PASS|PASSED|FAIL|FAILED|PROMOTED|FIRST\s*DIVISION|DISTINCTION)\b/i);
-  if (resultMatch) {
-    const r = resultMatch[1].toUpperCase();
-    result.result = r === 'PASS' || r === 'PASSED' ? 'Pass' : r === 'FAIL' || r === 'FAILED' ? 'Fail' : resultMatch[1];
+  // If total_marks is missing or captured the maximum round marks (e.g. 500, 600, 1000, 1200, 1250) instead of marks obtained
+  const isLikelyMaxMarks = (num) => num && (num % 50 === 0 || num % 100 === 0) && num > sumOfSubjectMarks;
+  if (sumOfSubjectMarks > 0 && (!result.total_marks || isLikelyMaxMarks(result.total_marks) || Math.abs(result.total_marks - sumOfSubjectMarks) > 100)) {
+    result.total_marks = sumOfSubjectMarks;
   }
 
-  // Subjects table extraction & cleanup
-  if (Array.isArray(result.subjects) && result.subjects.length > 0) {
-    const lowerDoc = fullText.toLowerCase();
-    result.subjects = result.subjects.filter((s) => {
-      if (!s) return false;
-      const name = String(s.name || '').trim();
-      const code = String(s.code || '').trim();
-      if (name.toLowerCase().includes('jee advanced')) return false;
-      const hasNameInText = name.length >= 3 && lowerDoc.includes(name.toLowerCase());
-      const hasCodeInText = code.length >= 2 && lowerDoc.includes(code.toLowerCase());
-      const hasMarks = s.marks !== null && s.marks !== undefined && !isNaN(Number(s.marks));
-      return (hasNameInText || hasCodeInText) && (hasMarks || s.grade);
-    });
+  // Result (Pass/Fail)
+  const resultMatch = fullText.match(/\b(PASS|PASSED|FAIL|FAILED|PROMOTED|FIRST\s*DIVISION|SECOND\s*DIVISION|DISTINCTION)\b/i);
+  if (resultMatch) {
+    const r = resultMatch[1].toUpperCase();
+    result.result = r === 'PASS' || r === 'PASSED' || r === 'PROMOTED' || r.includes('DIVISION') || r === 'DISTINCTION' ? 'Pass' : r === 'FAIL' || r === 'FAILED' ? 'Fail' : resultMatch[1];
+  } else if (!result.result || /^(?:not\s*specified|null|n\/a)$/i.test(result.result)) {
+    // Infer from subjects: if all marks >= 35, student passed
+    if (Array.isArray(result.subjects) && result.subjects.length > 0) {
+      const allPassed = result.subjects.every((s) => s.marks === null || s.marks >= 35);
+      result.result = allPassed ? 'Pass' : 'Fail';
+    }
   }
 
   return result;

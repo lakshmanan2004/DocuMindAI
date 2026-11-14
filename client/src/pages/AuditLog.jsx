@@ -183,7 +183,7 @@ const AuditLog = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-[#F2F2F7] dark:bg-[#2C2C2E] border-b border-black/[0.05] dark:border-white/[0.08] text-[#8E8E93] font-semibold text-[11px] uppercase tracking-wider">
+              <thead className="sticky top-0 z-10 bg-[#F2F2F7]/95 dark:bg-[#2C2C2E]/95 backdrop-blur-sm border-b border-black/[0.05] dark:border-white/[0.08] text-[#8E8E93] font-semibold text-[11px] uppercase tracking-wider shadow-2xs">
                 <tr>
                   <th className="px-5 py-3">Timestamp</th>
                   <th className="px-5 py-3">User</th>

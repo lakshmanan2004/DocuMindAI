@@ -106,7 +106,20 @@
   box-shadow: var(--liquid-glass-shadow);
   backdrop-filter: var(--liquid-glass-blur);
   -webkit-backdrop-filter: var(--liquid-glass-blur);
+}
+
+.liquid-glass:not(.sticky):not([style*="sticky"]):not([class*="fixed"]),
+.glass:not(.sticky):not([style*="sticky"]):not([class*="fixed"]) {
   position: relative;
+}
+
+/* Sticky Header Explicit Rules */
+header.sticky,
+.sticky-header {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
 }
 
 /* Refined Specular Light Refraction on Liquid Glass */

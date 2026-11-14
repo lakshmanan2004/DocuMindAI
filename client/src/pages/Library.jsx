@@ -555,7 +555,7 @@ const Library = () => {
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-black/[0.04] dark:divide-white/[0.06] text-left text-xs">
-                  <thead className="bg-black/[0.02] dark:bg-white/[0.02] text-[#8E8E93] font-semibold uppercase tracking-wider text-[11px]">
+                  <thead className="sticky top-0 z-10 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-sm text-[#8E8E93] font-semibold uppercase tracking-wider text-[11px] border-b border-black/[0.04] dark:border-white/[0.06] shadow-2xs">
                     <tr>
                       {user?.role !== 'viewer' && (
                         <th scope="col" className="px-4 py-3.5 w-10 text-center">

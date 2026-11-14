@@ -80,13 +80,14 @@ const Layout = () => {
         liteMode ? 'no-blur' : ''
       }`}
     >
-      {/* Top Navigation Bar (Apple iOS 26 Liquid Glass) */}
+      {/* Top Navigation Bar (Apple iOS 26 Liquid Glass Sticky Header) */}
       <header
-        className={`sticky top-0 z-40 w-full border-b border-black/[0.06] dark:border-white/[0.08] transition-colors ${
+        className={`sticky top-0 z-50 w-full border-b border-black/[0.06] dark:border-white/[0.08] transition-colors ${
           liteMode
             ? 'bg-white dark:bg-[#1C1C1E] shadow-sm'
             : 'liquid-glass'
         }`}
+        style={{ position: 'sticky', top: 0, zIndex: 50 }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Brand Identity */}
@@ -185,8 +186,11 @@ const Layout = () => {
 
       {/* Main Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full flex-1 flex flex-col">
-        {/* Apple Segmented Navigation Bar */}
-        <nav className="flex items-center space-x-1.5 bg-black/[0.03] dark:bg-white/[0.05] p-1.5 rounded-[16px] mb-6 overflow-x-auto scrollbar-none border border-black/[0.03] dark:border-white/[0.05]">
+        {/* Apple Segmented Navigation Bar (Sticky beneath header) */}
+        <nav
+          className="sticky top-[64px] z-40 flex items-center space-x-1.5 bg-[#F2F2F7]/95 dark:bg-[#000000]/95 backdrop-blur-md p-1.5 rounded-[16px] mb-6 overflow-x-auto scrollbar-none border border-black/[0.04] dark:border-white/[0.06] shadow-xs"
+          style={{ position: 'sticky', top: '64px', zIndex: 40 }}
+        >
           {navItems.map((item) => {
             if (item.adminOnly && user?.role !== 'admin') return null;
             if (item.hideForViewer && user?.role === 'viewer') return null;

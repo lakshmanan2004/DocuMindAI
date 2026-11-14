@@ -203,11 +203,14 @@ const builtInTemplates = [
         columns: [
           { key: 'code', label: 'Subject code', type: 'string' },
           { key: 'name', label: 'Subject name', type: 'string' },
-          { key: 'marks', label: 'Marks', type: 'number' },
+          { key: 'theory', label: 'Theory marks', type: 'number' },
+          { key: 'practical', label: 'Practical marks', type: 'number' },
+          { key: 'marks', label: 'Total marks', type: 'number' },
           { key: 'grade', label: 'Grade', type: 'string' }
         ]
       },
       { key: 'total_marks', label: 'Total marks', type: 'number' },
+      { key: 'percentage', label: 'Percentage (%)', type: 'number', hint: 'Aggregate percentage e.g. 73.0 or 79.8' },
       { key: 'result', label: 'Result (Pass/Fail)', type: 'string' }
     ],
     rules: [

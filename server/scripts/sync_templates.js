@@ -3,37 +3,24 @@ const path = require('path');
 const dotenv = require('dotenv');
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
-
 const { Template } = require('../src/models');
 const { builtInTemplates } = require('../src/seed/templates');
 
-async function syncTemplates() {
+async function syncMarkSheetTemplates() {
   await mongoose.connect(process.env.MONGO_URI);
-  console.log('Connected to MongoDB Atlas');
+  const markMaster = builtInTemplates.find(t => t.name === 'Mark Sheet');
 
-  for (const builtIn of builtInTemplates) {
-    const res = await Template.updateMany(
-      { name: builtIn.name },
-      {
-        $set: {
-          keywords: builtIn.keywords,
-          description: builtIn.description,
-          fields: builtIn.fields,
-          rules: builtIn.rules
-        }
-      }
-    );
-    console.log(`Updated "${builtIn.name}": matched ${res.matchedCount}, modified ${res.modifiedCount}`);
+  const templates = await Template.find({ name: 'Mark Sheet' });
+  console.log(`Found ${templates.length} Mark Sheet templates across organizations to update.`);
+
+  for (const t of templates) {
+    t.fields = markMaster.fields;
+    t.rules = markMaster.rules;
+    await t.save();
+    console.log(`Updated Mark Sheet template for org: ${t.orgId}`);
   }
 
   await mongoose.disconnect();
-  console.log('Done syncing templates.');
 }
 
-syncTemplates()
-  .then(() => process.exit(0))
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
-
+syncMarkSheetTemplates().catch(console.error);

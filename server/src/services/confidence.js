@@ -268,6 +268,14 @@ const scoreConfidence = (templateFields = [], extractedValues = {}, pages = [], 
       }
     }
 
+    // Percentage variations
+    if (key === 'percentage' && !isNaN(numVal)) {
+      candidates.push(`${numVal}%`);
+      candidates.push(`${numVal.toFixed(2)}%`);
+      candidates.push(`${numVal.toFixed(1)}%`);
+      candidates.push(`${numVal.toFixed(0)}%`);
+    }
+
     // Search across document pages
     for (const page of pages) {
       const rawText = page.text || '';
@@ -320,6 +328,12 @@ const scoreConfidence = (templateFields = [], extractedValues = {}, pages = [], 
         if (numVal && Math.abs(numVal - sum) <= 5) {
           isWordForWord = true;
           foundSnippet = `Sum of marks obtained across ${extractedValues.subjects.length} subjects: ${numVal}`;
+        }
+      } else if (key === 'percentage' && extractedValues.total_marks && Array.isArray(extractedValues.subjects) && extractedValues.subjects.length > 0) {
+        const expected = parseFloat(((extractedValues.total_marks / (extractedValues.subjects.length * 100)) * 100).toFixed(2));
+        if (numVal && Math.abs(numVal - expected) <= 0.2) {
+          isWordForWord = true;
+          foundSnippet = `Calculated percentage: ${numVal}% (${extractedValues.total_marks} / ${extractedValues.subjects.length * 100})`;
         }
       }
     }

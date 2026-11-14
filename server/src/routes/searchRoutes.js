@@ -10,3 +10,4 @@ router.use(authenticate);
 router.get('/', searchDocuments);
 
 module.exports = router;
+

@@ -11,8 +11,11 @@ async function reprocessUserDocs() {
   await mongoose.connect(process.env.MONGO_URI);
 
   const docs = await Document.find({
-    originalName: { $in: [/cbse/i, /whatsapp/i] }
+    originalName: { $in: [/cbse/i, /whatsapp/i, /image/i, /screenshot/i] }
   });
+
+  console.log(`Found ${docs.length} mark sheet docs to reprocess:`);
+  docs.forEach(d => console.log(` - ${d.originalName} (${d._id})`));
 
   for (const doc of docs) {
     console.log(`\nReprocessing: ${doc.originalName} (${doc._id})...`);

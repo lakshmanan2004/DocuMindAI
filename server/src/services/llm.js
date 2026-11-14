@@ -412,7 +412,10 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
   }
 
   // Generic Course / Degree Extraction
-  if (!result.course || result.course.length < 3 || /^(?:not\s*specified|null|n\/a)$/i.test(result.course)) {
+  const schoolCourseMatch = fullText.match(/\b(SECONDARY\s*SCHOOL\s*EXAMINATION|SECONDARY\s*SCHOOL\s*LEAVING\s*CERTIFICATE|SENIOR\s*SCHOOL\s*CERTIFICATE\s*EXAMINATION|HIGHER\s*SECONDARY\s*(?:SCHOOL\s*)?EXAMINATION|X\s*STANDARD|XII\s*STANDARD)\b/i);
+  if (schoolCourseMatch) {
+    result.course = schoolCourseMatch[0].replace(/\s+/g, ' ').trim();
+  } else if (!result.course || result.course.length < 3 || /^(?:not\s*specified|null|n\/a)$/i.test(result.course)) {
     const courseMatch = fullText.match(/\b(Bachelor\s*of\s*[A-Za-z\s]+|Master\s*of\s*[A-Za-z\s]+|B\.?[A-Za-z]{2,5}(?:\s*\([A-Za-z\s&,.-]+\))?|M\.?[A-Za-z]{2,5}(?:\s*\([A-Za-z\s&,.-]+\))?|Diploma\s*in\s*[A-Za-z\s]+|Class\s*(?:X|XII|10th|12th)|\bX\s*STANDARD\b)\b/i);
     if (courseMatch) result.course = courseMatch[0].trim();
   } else {
@@ -523,6 +526,9 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
           return null;
         }
 
+        let theory = s.theory !== null && s.theory !== undefined && !isNaN(Number(s.theory)) ? Number(s.theory) : null;
+        let practical = s.practical !== null && s.practical !== undefined && !isNaN(Number(s.practical)) ? Number(s.practical) : null;
+
         // Grounding: find the line corresponding to this subject in fullText
         const subjectLine = docLines.find((l) => l.toLowerCase().includes(name.toLowerCase()));
         if (subjectLine) {
@@ -533,6 +539,8 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
             const n2 = parseInt(numTriad[2], 10);
             const n3 = parseInt(numTriad[3], 10);
             if (n1 + n2 === n3) {
+              theory = n1;
+              practical = n2;
               marks = n3; // ALWAYS use the final Total mark (Theory + Internal/Practical)
             }
           } else {
@@ -540,6 +548,9 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
             const singleMatch = subjectLine.match(/\b0?([1-9]\d{1,2})\s+(?:ZERO|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|SEVENTY|EIGHTY|NINETY)\b/i);
             if (singleMatch) {
               marks = parseInt(singleMatch[1], 10);
+              // If there was no practical component, theory and practical remain null (blank)
+              theory = null;
+              practical = null;
             }
           }
 
@@ -560,6 +571,8 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
         return {
           code: code || null,
           name: name,
+          theory: theory !== null ? theory : null,
+          practical: practical !== null ? practical : null,
           marks: marks !== null ? marks : null,
           grade: grade || null
         };
@@ -582,8 +595,23 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
 
   // If total_marks is missing or captured the maximum round marks (e.g. 500, 600, 1000, 1200, 1250) instead of marks obtained
   const isLikelyMaxMarks = (num) => num && (num % 50 === 0 || num % 100 === 0) && num > sumOfSubjectMarks;
-  if (sumOfSubjectMarks > 0 && (!result.total_marks || isLikelyMaxMarks(result.total_marks) || Math.abs(result.total_marks - sumOfSubjectMarks) > 100)) {
+  if (sumOfSubjectMarks > 0 && (!result.total_marks || isLikelyMaxMarks(result.total_marks) || Math.abs(result.total_marks - sumOfSubjectMarks) > 5)) {
     result.total_marks = sumOfSubjectMarks;
+  }
+
+  // Percentage extraction & calculation
+  if (!result.percentage || isNaN(Number(result.percentage))) {
+    const percentMatch = fullText.match(/(?:Percentage|Aggregate|Total\s*Percentage)\s*[:.-]?\s*([0-9]{1,3}(?:\.[0-9]{1,2})?)\s*%/i);
+    if (percentMatch) {
+      result.percentage = parseFloat(percentMatch[1]);
+    } else if (result.total_marks && Array.isArray(result.subjects) && result.subjects.length > 0) {
+      const maxMarks = result.subjects.length * 100;
+      if (maxMarks > 0 && result.total_marks <= maxMarks) {
+        result.percentage = parseFloat(((result.total_marks / maxMarks) * 100).toFixed(2));
+      }
+    }
+  } else {
+    result.percentage = parseFloat(Number(result.percentage).toFixed(2));
   }
 
   // Result (Pass/Fail)

@@ -41,3 +41,4 @@ const searchDocuments = async (req, res) => {
 module.exports = {
   searchDocuments
 };
+

@@ -10,6 +10,7 @@ import Upload from './pages/Upload';
 import Templates from './pages/Templates';
 import Review from './pages/Review';
 import Chat from './pages/Chat';
+import Search from './pages/Search';
 import AuditLog from './pages/AuditLog';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
@@ -78,6 +79,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin', 'reviewer', 'employee', 'viewer']}>
                   <Chat />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/search"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'reviewer', 'employee', 'viewer']}>
+                  <Search />
                 </ProtectedRoute>
               }
             />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -22,7 +22,12 @@ import {
   Plus,
   Trash2,
   Table as TableIcon,
-  List as ListIcon
+  List as ListIcon,
+  Send,
+  Bot,
+  RotateCcw,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Button, Card, StatusBadge, ConfidenceBar, SegmentedControl, Modal, Select, IconButton } from '../ui';
 
@@ -55,6 +60,93 @@ const Review = () => {
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [availableTemplates, setAvailableTemplates] = useState([]);
   const [selectedNewType, setSelectedNewType] = useState('');
+
+  // Scoped Document Chat state (Milestone M6)
+  const [docChatMessages, setDocChatMessages] = useState([]);
+  const [docChatInput, setDocChatInput] = useState('');
+  const [docChatLoading, setDocChatLoading] = useState(false);
+  const [docChatExpandedSources, setDocChatExpandedSources] = useState({});
+  const docChatEndRef = useRef(null);
+
+  useEffect(() => {
+    if (doc) {
+      setDocChatMessages([
+        {
+          role: 'assistant',
+          content: `Hello! I'm your AI assistant for "${doc.originalName}". Ask me anything about this document's text, tables, marks, or extracted details.`,
+          sources: []
+        }
+      ]);
+    }
+  }, [doc?._id]);
+
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      docChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [docChatMessages, docChatLoading, activeTab]);
+
+  const handleSendDocChat = async (e) => {
+    e?.preventDefault();
+    if (!docChatInput.trim() || docChatLoading) return;
+
+    const question = docChatInput.trim();
+    setDocChatInput('');
+    setDocChatMessages((prev) => [
+      ...prev,
+      { role: 'user', content: question, sources: [] }
+    ]);
+    setDocChatLoading(true);
+
+    try {
+      const res = await api.post('/chat', {
+        question,
+        documentId: id
+      });
+
+      setDocChatMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: res.data.answer,
+          sources: res.data.sources || []
+        }
+      ]);
+    } catch (err) {
+      const errMsg =
+        err.response?.data?.message ||
+        'Error communicating with AI chat engine. Please verify the document is indexed.';
+      setDocChatMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `⚠️ ${errMsg}`,
+          sources: [],
+          isError: true
+        }
+      ]);
+    } finally {
+      setDocChatLoading(false);
+    }
+  };
+
+  const toggleDocSourceSnippet = (msgIdx, srcIdx) => {
+    const key = `${msgIdx}-${srcIdx}`;
+    setDocChatExpandedSources((prev) => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const handleResetDocChat = () => {
+    setDocChatMessages([
+      {
+        role: 'assistant',
+        content: `Conversation reset. Ask me anything about "${doc?.originalName || 'this document'}".`,
+        sources: []
+      }
+    ]);
+  };
 
   const fetchDocumentData = async () => {
     setLoading(true);
@@ -737,14 +829,157 @@ const Review = () => {
         </Card>
       )}
 
-      {/* TAB 4: CHAT */}
+      {/* TAB 4: CHAT (Milestone M6) */}
       {activeTab === 'chat' && (
-        <Card className="text-center py-16 space-y-3">
-          <MessageSquare className="w-8 h-8 text-[#007AFF] mx-auto" />
-          <h3 className="text-sm font-bold text-[#1C1C1E] dark:text-[#F2F2F7]">Scoped Chat (RAG)</h3>
-          <p className="text-xs text-[#6B7280] max-w-sm mx-auto">
-            Available under Milestone M6 (RAG with Atlas Vector search citations).
-          </p>
+        <Card className="p-0 overflow-hidden flex flex-col h-[650px] shadow-sm">
+          {/* Chat Header */}
+          <div className="p-3.5 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/10 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                <Bot className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white">
+                  Chat with {doc?.originalName || 'Document'}
+                </span>
+                <span className="ml-2 text-[10px] text-slate-400 font-normal">
+                  RAG scoped to this document
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleResetDocChat}
+              title="Reset Chat"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 transition-colors"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Messages Scroll Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {docChatMessages.map((msg, msgIdx) => (
+              <div
+                key={msgIdx}
+                className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {msg.role === 'assistant' && (
+                  <div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm text-xs">
+                    <Bot className="h-3.5 w-3.5" />
+                  </div>
+                )}
+
+                <div
+                  className={`max-w-xl rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${
+                    msg.role === 'user'
+                      ? 'bg-indigo-600 text-white rounded-br-none'
+                      : msg.isError
+                      ? 'bg-rose-50 border border-rose-200 text-rose-800 rounded-bl-none dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300'
+                      : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none'
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+
+                  {/* Sources / Citations */}
+                  {msg.sources && msg.sources.length > 0 && (
+                    <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+                      <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <Sparkles className="h-2.5 w-2.5 text-indigo-500" />
+                        Cited Sources ({msg.sources.length})
+                      </div>
+                      {msg.sources.map((src, srcIdx) => {
+                        const isExpanded = !!docChatExpandedSources[`${msgIdx}-${srcIdx}`];
+                        return (
+                          <div
+                            key={srcIdx}
+                            className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-lg p-2 text-[11px]"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                                [{src.citationIndex}] Page {src.pageNumber}
+                              </span>
+                              <button
+                                onClick={() => toggleDocSourceSnippet(msgIdx, srcIdx)}
+                                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5"
+                              >
+                                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                              </button>
+                            </div>
+                            {isExpanded && (
+                              <p className="mt-1 pt-1 border-t border-slate-200 dark:border-slate-700 font-mono text-[10px] text-slate-600 dark:text-slate-300 bg-white dark:bg-black/30 p-1.5 rounded">
+                                "{src.snippet}"
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {docChatLoading && (
+              <div className="flex gap-3 justify-start items-center text-xs text-slate-400">
+                <div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shrink-0">
+                  <Bot className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-2xl rounded-bl-none shadow-sm">
+                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" />
+                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  <span className="ml-1 text-[11px] text-slate-500 font-medium">Searching & answering...</span>
+                </div>
+              </div>
+            )}
+
+            <div ref={docChatEndRef} />
+          </div>
+
+          {/* Quick Prompts */}
+          <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+            <span className="text-slate-400 font-medium shrink-0">Ask:</span>
+            {[
+              'What is the total marks and result?',
+              'List all subjects and grades',
+              'What is the institution or school name?',
+              'What are the key details in this document?'
+            ].map((p) => (
+              <button
+                key={p}
+                onClick={() => {
+                  setDocChatInput(p);
+                }}
+                className="px-2.5 py-0.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 transition-colors shrink-0"
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
+          {/* Chat Input Bar */}
+          <form
+            onSubmit={handleSendDocChat}
+            className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={docChatInput}
+              onChange={(e) => setDocChatInput(e.target.value)}
+              placeholder="Ask a question about this document..."
+              className="flex-1 px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={docChatLoading}
+              disabled={!docChatInput.trim()}
+            >
+              <Send className="h-3.5 w-3.5" />
+            </Button>
+          </form>
         </Card>
       )}
 

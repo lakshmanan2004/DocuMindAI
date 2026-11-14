@@ -15,7 +15,8 @@ import {
   Zap,
   Moon,
   Sun,
-  UserCircle
+  UserCircle,
+  Search
 } from 'lucide-react';
 
 const Layout = () => {
@@ -68,6 +69,7 @@ const Layout = () => {
     { name: 'Upload Documents', path: '/upload', icon: UploadCloud, hideForViewer: true },
     { name: 'Templates', path: '/templates', icon: Layers, adminOnly: true },
     { name: 'AI Chat', path: '/chat', icon: MessageSquare },
+    { name: 'Hybrid Search', path: '/search', icon: Search },
     { name: 'Team & Roles', path: '/users', icon: Users, adminOnly: true },
     { name: 'Audit Log', path: '/audit', icon: ShieldCheck, adminOnly: true },
     { name: 'Profile & Security', path: '/profile', icon: UserCircle },

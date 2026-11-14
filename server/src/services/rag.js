@@ -190,7 +190,25 @@ async function answerWithRAG({ question, orgId, documentId = null, folderId = nu
   });
 
   candidates.sort((a, b) => b.combinedScore - a.combinedScore);
-  const hits = candidates.slice(0, 4); // Take top 4 most relevant chunks
+
+  // Deduplicate candidates by documentId + pageNumber so the same page never repeats
+  const seenPages = new Set();
+  const uniqueCandidates = [];
+  for (const cand of candidates) {
+    const key = `${cand.documentId.toString()}-${cand.pageNumber}`;
+    if (!seenPages.has(key)) {
+      seenPages.add(key);
+      uniqueCandidates.push(cand);
+    }
+  }
+
+  // Filter out candidates with low relevance relative to the top hit
+  const topScore = uniqueCandidates[0]?.combinedScore || 0;
+  const minThreshold = Math.max(0.28, topScore * 0.60);
+
+  const hits = uniqueCandidates
+    .filter((cand, idx) => idx === 0 || cand.combinedScore >= minThreshold)
+    .slice(0, 3);
 
   // 4. Retrieve verified metadata extractions for hit documents
   const docIds = [...new Set(hits.map((h) => h.documentId.toString()))];
@@ -305,12 +323,15 @@ Answer concisely with citations.`;
     const data = await response.json();
     let answerText = data.message?.content?.trim() || '';
 
-    if (!answerText) {
-      answerText = 'I could not find this in your documents.';
+    if (!answerText || answerText.includes('I could not find this in your documents')) {
+      return {
+        answer: 'I could not find this in your documents.',
+        sources: []
+      };
     }
 
     // Format sources payload
-    const sources = hits.map((hit, idx) => {
+    let sources = hits.map((hit, idx) => {
       const cleaned = normalizeOcrArtifacts(hit.text);
       return {
         citationIndex: idx + 1,
@@ -321,6 +342,49 @@ Answer concisely with citations.`;
         score: Number(hit.combinedScore?.toFixed(4) || hit.score?.toFixed(4) || 0)
       };
     });
+
+    // Check what sources were actually cited or referenced in the answer
+    const citedIndices = new Set();
+    const bracketMatches = answerText.matchAll(/\[(\d+)\]/g);
+    for (const m of bracketMatches) {
+      citedIndices.add(parseInt(m[1], 10));
+    }
+
+    if (citedIndices.size > 0) {
+      // Filter sources strictly to those cited in the answer
+      const filtered = sources.filter((s) => citedIndices.has(s.citationIndex));
+      if (filtered.length > 0) {
+        sources = filtered;
+      }
+    } else {
+      // If the model did not output bracket citations, find the source(s) that actually discuss the answered content
+      const matchingSources = sources.filter((s) => {
+        const cleanAns = answerText.toLowerCase();
+        const cleanDocName = s.documentName.toLowerCase().replace(/\.[a-z0-9]+$/, '');
+        if (cleanAns.includes(cleanDocName)) return true;
+        // Check word overlap between answer and source text
+        const words = answerText
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .split(/\s+/)
+          .filter((w) => w.length > 3 && !['according', 'document', 'total', 'price', 'page', 'amount'].includes(w));
+        const matchedWords = words.filter((w) => s.snippet.toLowerCase().includes(w));
+        return matchedWords.length >= 2;
+      });
+
+      if (matchingSources.length > 0) {
+        sources = matchingSources;
+        if (!/\[\d+\]/.test(answerText)) {
+          answerText += ` [${sources[0].citationIndex}]`;
+        }
+      } else {
+        // Fallback to top source only
+        sources = sources.slice(0, 1);
+        if (!/\[\d+\]/.test(answerText)) {
+          answerText += ` [1]`;
+        }
+      }
+    }
 
     return {
       answer: answerText,

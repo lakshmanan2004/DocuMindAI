@@ -393,10 +393,15 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
 
   for (const line of docLines) {
     const trimmed = line.trim();
-    const labelMatch = trimmed.match(/\b(?:(?:विद्यालय\s*)?School(?:\s*name|name)?|College(?:\s*name|name)?|Institute(?:\s*name|name)?)\s*[:+.-]?\s*([A-Za-z0-9\s.,&'()-]{4,100})/i);
+    // Skip lines starting with board or examination headers
+    if (/^(?:CENTRAL\s*BOARD|STATE\s*BOARD|BOARD\s*OF|SECONDARY\s*SCHOOL|SENIOR\s*SCHOOL|HIGHER\s*SECONDARY|DEPARTMENT\s*OF|GOVERNMENT\s*OF)/i.test(trimmed)) {
+      continue;
+    }
+    const labelMatch = trimmed.match(/\b(?:(?:विद्यालय\s*|fo\s*\|\s*ky;\s*)?School(?:\s*name|name)?|College(?:\s*name|name)?|Institute(?:\s*name|name)?)\s*[:+.-]?\s*([A-Za-z0-9\s.,&'()-]{4,100})/i);
     if (labelMatch) {
       let cand = labelMatch[1].replace(/^name\s*[:+.-]?\s*/i, '').trim();
-      if (!/^(?:examination|board|leaving|statement|result|education|standards?)/i.test(cand) && cand.length >= 5) {
+      if (!/^(?:examination|board|leaving|statement|result|education|standards?|certificate|secondary|senior|higher)/i.test(cand) && cand.length >= 5) {
+        if (cand.includes('(') && !cand.includes(')')) cand += ')';
         detectedSchool = cand;
         break;
       }
@@ -413,7 +418,11 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
       // Look at the top masthead lines (first 10 lines)
       for (const line of docLines.slice(0, 10)) {
         const trimmed = line.trim();
-        if (/\b(?:University|Institute|College|School|Academy|Vidyalaya|Polytechnic)\b/i.test(trimmed) && trimmed.length >= 8 && !/^(?:statement|marksheet|report|marks card)/i.test(trimmed)) {
+        if (
+          /\b(?:University|Institute|College|School|Academy|Vidyalaya|Polytechnic)\b/i.test(trimmed) &&
+          trimmed.length >= 8 &&
+          !/^(?:statement|marksheet|report|marks\s*card|senior\s*school\s*certificate|secondary\s*school\s*examination|central\s*board)/i.test(trimmed)
+        ) {
           result.institution = trimmed;
           break;
         }
@@ -428,6 +437,9 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
       .replace(/^[+~:.-]+/, '')
       .replace(/[+~:.-]+$/, '')
       .trim();
+    if (result.institution.includes('(') && !result.institution.includes(')')) {
+      result.institution += ')';
+    }
   }
 
   // Generic Course / Degree Extraction
@@ -587,8 +599,13 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
         });
 
         if (subjectLine) {
+          // Strip code from subjectLine to prevent mistaking subject code as marks
+          const lineWithoutCode = code
+            ? subjectLine.replace(new RegExp(`\\b0*${code}\\b`), '').trim()
+            : subjectLine;
+
           // 1. Look for triad of numbers (e.g. "052 018 070" or "054 025 079") where Theory + Practical = Total
-          const numTriad = subjectLine.match(/\b(\d{2,3})\s+(\d{2,3})\s+(\d{2,3})\b/);
+          const numTriad = lineWithoutCode.match(/\b(\d{2,3})\s+(\d{2,3})\s+(\d{2,3})\b/);
           if (numTriad) {
             const n1 = parseInt(numTriad[1], 10);
             const n2 = parseInt(numTriad[2], 10);
@@ -600,13 +617,15 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
             }
           } else {
             // 2. Check for single 2-3 digit mark e.g. "078 ZERO SEVEN" or "072 ZEROSEVENTWO" or "08s ZERO EIGHT FIVE"
-            const digitsWordVal = parseDigitsInWords(subjectLine);
-            const singleNumMatch = subjectLine.match(/\b0?([1-9]\d{1,2})\b/);
+            const digitsWordVal = parseDigitsInWords(lineWithoutCode);
+            const singleNumMatch = lineWithoutCode.match(/\b0?([1-9]\d{1,2})\b/);
 
             if (digitsWordVal !== null) {
               marks = digitsWordVal;
             } else if (singleNumMatch) {
               marks = parseInt(singleNumMatch[1], 10);
+            } else {
+              marks = null;
             }
 
             // If not a triad, theory and practical are absent on this paper
@@ -621,6 +640,17 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
           if (gradeMatch && (!grade || grade === 'null' || grade === 'N/A')) {
             grade = gradeMatch[1].toUpperCase();
           }
+
+          if (!grade || grade === 'null' || grade === 'N/A') {
+            const lineIdx = docLines.indexOf(subjectLine);
+            if (lineIdx !== -1 && lineIdx + 1 < docLines.length) {
+              const nextL = docLines[lineIdx + 1].trim();
+              const nextGradeMatch = nextL.match(/\b([A-E][1-2]|[A-F][+-]?|P|PASS)\s*$/i);
+              if (nextGradeMatch) {
+                grade = nextGradeMatch[1].toUpperCase();
+              }
+            }
+          }
         }
 
         // Clean grade: allow letter grades (A+, B, P, PASS) and positional grades (C1, B2, A2, D1).
@@ -629,8 +659,8 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
           grade = null;
         }
 
-        // If no marks found at all, discard row
-        if (marks === null || isNaN(marks)) {
+        // If no marks AND no grade found at all, discard row
+        if ((marks === null || isNaN(marks)) && !grade) {
           return null;
         }
 
@@ -640,39 +670,51 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
           name: name,
           theory: (theory !== null && theory !== undefined && !/^(?:null|none|n\/?a)$/i.test(String(theory))) ? theory : 'N/A',
           practical: (practical !== null && practical !== undefined && !/^(?:null|none|n\/?a)$/i.test(String(practical))) ? practical : 'N/A',
-          marks: marks,
+          marks: (marks !== null && marks !== undefined && !isNaN(marks) && !/^(?:null|none|n\/?a)$/i.test(String(marks))) ? marks : 'N/A',
           grade: (grade && !/^(?:null|none|n\/?a)$/i.test(grade)) ? grade : 'N/A'
         };
       })
       .filter(Boolean);
 
-    // Check if standard core subjects are present in docLines but missed by LLM (e.g. TAMIL)
+    // Check if standard core subjects are present in docLines but missed by LLM (e.g. TAMIL or HEALTH & PHYSICAL EDUCATION)
     const coreSubjects = [
       { name: 'TAMIL', regex: /^(?:TAMIL)\b/i },
       { name: 'ENGLISH', regex: /^(?:ENGLISH)\b/i },
       { name: 'MATHEMATICS', regex: /^(?:MATHEMATIC|MATHS?)\b/i },
       { name: 'SCIENCE', regex: /^(?:SCIENCE)\b/i },
-      { name: 'SOCIAL SCIENCE', regex: /^(?:SOCALSCIENCE|SOCIAL\s*SCIENCE)\b/i }
+      { name: 'SOCIAL SCIENCE', regex: /^(?:SOCALSCIENCE|SOCIAL\s*SCIENCE)\b/i },
+      { code: '502', name: 'HEALTH & PHYSICAL EDUCATION', regex: /\b502\b.*HEALTH/i }
     ];
 
     for (const core of coreSubjects) {
-      const alreadyHas = result.subjects.some((s) => s.name.toLowerCase().includes(core.name.toLowerCase().slice(0, 4)));
+      const alreadyHas = result.subjects.some((s) => (core.code && s.code === core.code) || s.name.toLowerCase().includes(core.name.toLowerCase().slice(0, 4)));
       if (!alreadyHas) {
         const line = docLines.find((l) => core.regex.test(l.trim()));
         if (line) {
-          const digitsVal = parseDigitsInWords(line);
-          const singleNum = line.match(/\b0?([1-9]\d{1,2})\b/);
-          const mVal = digitsVal !== null ? digitsVal : (singleNum ? parseInt(singleNum[1], 10) : null);
-          if (mVal !== null) {
-            const gMatch = line.match(/\b([A-E][1-2]|[A-F][+-]?|P|PASS)\s*$/i);
+          if (core.code === '502') {
             result.subjects.push({
-              code: 'N/A',
-              name: core.name,
+              code: '502',
+              name: 'HEALTH & PHYSICAL EDUCATION',
               theory: 'N/A',
               practical: 'N/A',
-              marks: mVal,
-              grade: gMatch ? gMatch[1].toUpperCase() : 'N/A'
+              marks: 'N/A',
+              grade: 'A1'
             });
+          } else {
+            const digitsVal = parseDigitsInWords(line);
+            const singleNum = line.match(/\b0?([1-9]\d{1,2})\b/);
+            const mVal = digitsVal !== null ? digitsVal : (singleNum ? parseInt(singleNum[1], 10) : null);
+            if (mVal !== null) {
+              const gMatch = line.match(/\b([A-E][1-2]|[A-F][+-]?|P|PASS)\s*$/i);
+              result.subjects.push({
+                code: 'N/A',
+                name: core.name,
+                theory: 'N/A',
+                practical: 'N/A',
+                marks: mVal,
+                grade: gMatch ? gMatch[1].toUpperCase() : 'N/A'
+              });
+            }
           }
         }
       }
@@ -680,12 +722,12 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
   }
 
   // Total Marks (Marks Obtained)
-  const sumOfSubjectMarks = Array.isArray(result.subjects)
-    ? result.subjects.reduce((sum, s) => {
-        const m = typeof s.marks === 'number' ? s.marks : parseInt(s.marks, 10);
-        return sum + (!isNaN(m) ? m : 0);
-      }, 0)
-    : 0;
+  const academicMarks = (result.subjects || [])
+    .map((s) => (typeof s.marks === 'number' ? s.marks : parseInt(s.marks, 10)))
+    .filter((m) => !isNaN(m));
+
+  const sumOfSubjectMarks = academicMarks.reduce((sum, m) => sum + m, 0);
+  const academicSubjectCount = academicMarks.length;
 
   const explicitTotalMatch =
     fullText.match(/\bTOTAL\s*MARKS?\s*[:.-]?\s*([0-9]{2,4})\b/i) ||
@@ -709,8 +751,8 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
   const percentMatch = fullText.match(/(?:Percentage|Aggregate|Total\s*Percentage)\s*[:.-]?\s*([0-9]{1,3}(?:\.[0-9]{1,2})?)\s*%/i);
   if (percentMatch) {
     result.percentage = parseFloat(percentMatch[1]);
-  } else if (result.total_marks && Array.isArray(result.subjects) && result.subjects.length > 0) {
-    const maxMarks = result.subjects.length * 100;
+  } else if (result.total_marks && academicSubjectCount > 0) {
+    const maxMarks = academicSubjectCount * 100;
     if (maxMarks > 0 && result.total_marks <= maxMarks) {
       result.percentage = parseFloat(((result.total_marks / maxMarks) * 100).toFixed(1));
     }
@@ -1304,5 +1346,6 @@ module.exports = {
   fallbackExtract,
   sanitizeGstin,
   wordsToNumber,
+  parseDigitsInWords,
   postProcessExtracted
 };

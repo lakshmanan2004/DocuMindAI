@@ -541,30 +541,46 @@ const Review = () => {
                                 <table className="w-full text-[11px] text-left border-collapse">
                                   <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold sticky top-0">
                                     <tr>
-                                      {Object.keys(field.value[0] || {}).map((colKey) => (
-                                        <th key={colKey} className="p-1.5 border-b border-slate-200 uppercase font-mono text-[10px]">
-                                          {colKey}
-                                        </th>
-                                      ))}
+                                      {Object.keys(field.value[0] || {}).map((colKey) => {
+                                        const isWide = ['name', 'description', 'test_name', 'item'].includes(colKey.toLowerCase());
+                                        const isNarrow = ['code', 'theory', 'practical', 'marks', 'grade', 'unit', 'flag'].includes(colKey.toLowerCase());
+                                        return (
+                                          <th
+                                            key={colKey}
+                                            className={`p-1.5 border-b border-slate-200 uppercase font-mono text-[10px] ${
+                                              isWide ? 'min-w-[150px]' : isNarrow ? 'w-16 min-w-[54px]' : 'min-w-[80px]'
+                                            }`}
+                                          >
+                                            {colKey}
+                                          </th>
+                                        );
+                                      })}
                                       {canReview && <th className="p-1.5 border-b border-slate-200 w-8"></th>}
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {field.value.map((row, rIdx) => (
                                       <tr key={rIdx} className="border-b border-slate-100 hover:bg-slate-50/50">
-                                        {Object.keys(field.value[0] || {}).map((colKey) => (
-                                          <td key={colKey} className="p-1">
-                                            <input
-                                              type="text"
-                                              disabled={!canReview}
-                                              value={row[colKey] !== null && row[colKey] !== undefined && row[colKey] !== '' ? row[colKey] : 'N/A'}
-                                              onChange={(e) =>
-                                                handleTableCellChange(field.key, rIdx, colKey, e.target.value)
-                                              }
-                                              className="w-full px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 text-[11px] outline-none focus:ring-1 focus:ring-indigo-500"
-                                            />
-                                          </td>
-                                        ))}
+                                        {Object.keys(field.value[0] || {}).map((colKey) => {
+                                          const isWide = ['name', 'description', 'test_name', 'item'].includes(colKey.toLowerCase());
+                                          const isNarrow = ['code', 'theory', 'practical', 'marks', 'grade', 'unit', 'flag'].includes(colKey.toLowerCase());
+                                          return (
+                                            <td
+                                              key={colKey}
+                                              className={`p-1 ${isWide ? 'min-w-[150px]' : isNarrow ? 'w-16 min-w-[54px]' : 'min-w-[80px]'}`}
+                                            >
+                                              <input
+                                                type="text"
+                                                disabled={!canReview}
+                                                value={row[colKey] !== null && row[colKey] !== undefined && row[colKey] !== '' ? row[colKey] : 'N/A'}
+                                                onChange={(e) =>
+                                                  handleTableCellChange(field.key, rIdx, colKey, e.target.value)
+                                                }
+                                                className="w-full px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 text-[11px] outline-none focus:ring-1 focus:ring-indigo-500"
+                                              />
+                                            </td>
+                                          );
+                                        })}
                                         {canReview && (
                                           <td className="p-1 text-center">
                                             <button

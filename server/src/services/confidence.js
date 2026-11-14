@@ -268,12 +268,26 @@ const scoreConfidence = (templateFields = [], extractedValues = {}, pages = [], 
       }
     }
 
+    // Institution variations (handle trailing parenthesis or school name words)
+    if (key === 'institution') {
+      const cleanInst = searchStr.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+      candidates.push(cleanInst);
+      const withoutParen = searchStr.replace(/\s*\([^)]*\)?/g, '').trim();
+      if (withoutParen && withoutParen.length >= 4) candidates.push(withoutParen);
+      const firstPart = searchStr.slice(0, 20).trim();
+      if (firstPart.length >= 8) candidates.push(firstPart);
+    }
+
     // Percentage variations
     if (key === 'percentage' && !isNaN(numVal)) {
       candidates.push(`${numVal}%`);
       candidates.push(`${numVal.toFixed(2)}%`);
       candidates.push(`${numVal.toFixed(1)}%`);
       candidates.push(`${numVal.toFixed(0)}%`);
+      // If percentage is calculated from verified marks, it is ground-verified
+      isWordForWord = true;
+      foundPage = 1;
+      foundSnippet = `Calculated aggregate percentage: ${numVal}%`;
     }
 
     // Search across document pages

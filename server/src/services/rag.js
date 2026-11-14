@@ -29,7 +29,9 @@ function scoreKeywordMatch(text, query) {
   if (!text || !query) return 0;
   const stopWords = new Set([
     'what', 'the', 'for', 'and', 'with', 'from', 'invoice', 'document', 'bill',
-    'amount', 'total', 'date', 'gstin', 'tell', 'show', 'find', 'give', 'item', 'board'
+    'amount', 'total', 'date', 'gstin', 'tell', 'show', 'find', 'give', 'item', 'board',
+    'price', 'unit', 'cost', 'rate', 'then', 'about', 'its', 'his', 'her', 'their', 'this', 'that',
+    'how', 'much', 'who', 'where', 'when', 'which', 'was', 'were', 'does', 'did', 'done', 'also'
   ]);
   const queryTokens = query
     .toLowerCase()
@@ -165,13 +167,43 @@ function normalizeOcrArtifacts(text) {
  * @param {string} [params.folderId] - Optional folder filter
  * @returns {Promise<{ answer: string, sources: Array<Object> }>}
  */
-async function answerWithRAG({ question, orgId, documentId = null, folderId = null }) {
+async function answerWithRAG({ question, orgId, documentId = null, folderId = null, history = [] }) {
   if (!question || !question.trim()) {
     throw new Error('Question is required');
   }
 
+  const stopWords = new Set([
+    'what', 'the', 'for', 'and', 'with', 'from', 'invoice', 'document', 'bill',
+    'amount', 'total', 'date', 'gstin', 'tell', 'show', 'find', 'give', 'item', 'board',
+    'price', 'unit', 'cost', 'rate', 'then', 'about', 'its', 'his', 'her', 'their', 'this', 'that',
+    'how', 'much', 'who', 'where', 'when', 'which', 'was', 'were', 'does', 'did', 'done', 'also'
+  ]);
+
+  const extractEntityTokens = (text) =>
+    (text || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !stopWords.has(w));
+
+  let currentTokens = extractEntityTokens(question);
+  let effectiveSearchQuery = question.trim();
+
+  // If follow-up question lacks specific entity tokens or uses pronouns, inherit entities from recent user message
+  const hasPronoun = /\b(its?|his|her|their|this|that|these|those|he|she|they)\b/i.test(question);
+  if ((currentTokens.length === 0 || hasPronoun) && Array.isArray(history) && history.length > 0) {
+    const lastUserMsg = [...history].reverse().find((m) => m.role === 'user');
+    if (lastUserMsg) {
+      const priorTokens = extractEntityTokens(lastUserMsg.content);
+      if (priorTokens.length > 0) {
+        effectiveSearchQuery = `${priorTokens.join(' ')} ${question.trim()}`;
+        currentTokens = [...new Set([...priorTokens, ...currentTokens])];
+      }
+    }
+  }
+
   // 1. Generate query embedding
-  const queryVector = await embedQuery(question.trim());
+  const queryVector = await embedQuery(effectiveSearchQuery);
 
   // 2. Retrieve top candidates
   const candidates = await searchChunks(queryVector, orgId, documentId, 10, folderId);
@@ -185,8 +217,10 @@ async function answerWithRAG({ question, orgId, documentId = null, folderId = nu
 
   // 3. Hybrid Re-ranking: combine vector similarity with product keyword bonus
   candidates.forEach((cand) => {
-    const keywordBonus = scoreKeywordMatch(`${cand.documentName} ${cand.text}`, question);
+    const textBlob = `${cand.documentName} ${cand.text}`.toLowerCase();
+    const keywordBonus = scoreKeywordMatch(textBlob, effectiveSearchQuery);
     cand.combinedScore = (cand.score || 0) + keywordBonus;
+    cand.entityMatches = currentTokens.filter((t) => textBlob.includes(t)).length;
   });
 
   candidates.sort((a, b) => b.combinedScore - a.combinedScore);
@@ -202,13 +236,20 @@ async function answerWithRAG({ question, orgId, documentId = null, folderId = nu
     }
   }
 
-  // Filter out candidates with low relevance relative to the top hit
-  const topScore = uniqueCandidates[0]?.combinedScore || 0;
-  const minThreshold = Math.max(0.28, topScore * 0.60);
+  // If top candidate has specific entity matches, filter out candidates from completely unrelated products (0 matches)
+  const topCandidate = uniqueCandidates[0];
+  let hits = uniqueCandidates;
+  if (topCandidate && currentTokens.length > 0 && topCandidate.entityMatches > 0) {
+    const filteredByEntity = uniqueCandidates.filter((cand) => cand.entityMatches > 0);
+    if (filteredByEntity.length > 0) {
+      hits = filteredByEntity;
+    }
+  }
 
-  const hits = uniqueCandidates
-    .filter((cand, idx) => idx === 0 || cand.combinedScore >= minThreshold)
-    .slice(0, 3);
+  // Filter out candidates with low relevance relative to the top hit
+  const topScore = hits[0]?.combinedScore || 0;
+  const minThreshold = Math.max(0.28, topScore * 0.65);
+  hits = hits.filter((cand, idx) => idx === 0 || cand.combinedScore >= minThreshold).slice(0, 3);
 
   // 4. Retrieve verified metadata extractions for hit documents
   const docIds = [...new Set(hits.map((h) => h.documentId.toString()))];
@@ -286,7 +327,7 @@ STRICT INSTRUCTIONS:
    - In OCR text, the Indian Rupee symbol '₹' is frequently misread as '3' or 'R' (for example, '31,499.00' means ₹1,499.00). Use the verified amount from [VERIFIED METADATA].
    - Never quote discounts, shipping charges, or zero amounts (0.00) as the product's price.
 4. MARKSHEETS: In educational certificates, Total Marks is the marks OBTAINED by the student, not the maximum possible marks. Use the 'marks_summary', 'maximum_total_marks', and 'percentage' from [VERIFIED METADATA] to answer questions about marks and percentages.
-5. CITATIONS: Be concise, direct, and cite the source using bracket notation like [1].
+5. CITATIONS: Be concise, direct, and cite the source using bracket notation like [1]. Do NOT write a bibliography or list of documents at the end of your response; citations inside brackets [1] are sufficient.
 6. FALLBACK: If the answer cannot be found in the provided context, respond EXACTLY:
 "I could not find this in your documents."`;
 
@@ -299,15 +340,27 @@ Answer concisely with citations.`;
 
   // 7. Call Ollama with Llama 3.2
   try {
+    const conversationMessages = [{ role: 'system', content: systemPrompt }];
+
+    if (Array.isArray(history) && history.length > 0) {
+      const recentHistory = history
+        .filter((m) => m && m.content)
+        .slice(-4)
+        .map((m) => ({
+          role: m.role === 'user' ? 'user' : 'assistant',
+          content: m.content
+        }));
+      conversationMessages.push(...recentHistory);
+    }
+
+    conversationMessages.push({ role: 'user', content: userPrompt });
+
     const response = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: LLM_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
+        messages: conversationMessages,
         stream: false,
         options: {
           temperature: 0
@@ -385,6 +438,24 @@ Answer concisely with citations.`;
         }
       }
     }
+
+    // Strip trailing bibliography lines like "\n\n[1] Document: ..." or "\n\n[1] Page 1"
+    answerText = answerText
+      .replace(/\n+\s*\[\d+\]\s*(Document:|\w+\.\w+|Page\s+\d+)[^\n]*/gi, '')
+      .replace(/\n+\s*Citations?:?\s*$/i, '')
+      .trim();
+
+    // Re-index remaining sources to start from 1 and map their brackets in answerText
+    const indexMap = new Map();
+    sources.forEach((s, idx) => {
+      indexMap.set(s.citationIndex, idx + 1);
+      s.citationIndex = idx + 1;
+    });
+
+    answerText = answerText.replace(/\[(\d+)\]/g, (match, p1) => {
+      const orig = parseInt(p1, 10);
+      return indexMap.has(orig) ? `[${indexMap.get(orig)}]` : match;
+    });
 
     return {
       answer: answerText,

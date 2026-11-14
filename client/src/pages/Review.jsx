@@ -99,9 +99,21 @@ const Review = () => {
     setDocChatLoading(true);
 
     try {
+      const history = docChatMessages
+        .filter(
+          (m) =>
+            !m.isError &&
+            m.content &&
+            !m.content.startsWith('Ask questions specifically about') &&
+            !m.content.startsWith('Conversation reset')
+        )
+        .slice(-6)
+        .map((m) => ({ role: m.role, content: m.content }));
+
       const res = await api.post('/chat', {
         question,
-        documentId: id
+        documentId: id,
+        history
       });
 
       setDocChatMessages((prev) => [

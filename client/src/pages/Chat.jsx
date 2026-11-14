@@ -74,9 +74,21 @@ const Chat = () => {
     setLoading(true);
 
     try {
+      const history = messages
+        .filter(
+          (m) =>
+            !m.isError &&
+            m.content &&
+            !m.content.startsWith('Hello! I am your DocuMind') &&
+            !m.content.startsWith('Conversation reset')
+        )
+        .slice(-6)
+        .map((m) => ({ role: m.role, content: m.content }));
+
       const payload = {
         question: userQuestion,
-        documentId: selectedDocId || undefined
+        documentId: selectedDocId || undefined,
+        history
       };
 
       const res = await api.post('/chat', payload);

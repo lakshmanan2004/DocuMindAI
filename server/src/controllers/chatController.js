@@ -7,7 +7,7 @@ const { answerWithRAG } = require('../services/rag');
  */
 const askChat = async (req, res) => {
   try {
-    const { question, documentId, folderId } = req.body;
+    const { question, documentId, folderId, history } = req.body;
 
     if (!question || typeof question !== 'string' || !question.trim()) {
       return res.status(400).json({ message: 'A valid question is required' });
@@ -19,7 +19,8 @@ const askChat = async (req, res) => {
       question: question.trim(),
       orgId,
       documentId: documentId || null,
-      folderId: folderId || null
+      folderId: folderId || null,
+      history: Array.isArray(history) ? history : []
     });
 
     res.status(200).json(result);

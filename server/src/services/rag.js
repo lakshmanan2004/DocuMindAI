@@ -189,8 +189,20 @@ async function answerWithRAG({ question, orgId, documentId = null, folderId = nu
   const extMap = {};
   for (const ext of extractions) {
     const pairs = ext.fields
-      ?.filter((f) => f.value !== null && f.value !== undefined)
-      .map((f) => `• ${f.key}: ${f.value}`);
+      ?.filter((f) => f.value !== null && f.value !== undefined && f.value !== 'N/A')
+      .map((f) => {
+        let valStr = f.value;
+        if (Array.isArray(valStr)) {
+          if (valStr.length > 0 && typeof valStr[0] === 'object') {
+            valStr = JSON.stringify(valStr);
+          } else {
+            valStr = valStr.join(', ');
+          }
+        } else if (typeof valStr === 'object' && valStr !== null) {
+          valStr = JSON.stringify(valStr);
+        }
+        return `• ${f.label || f.key}: ${valStr}`;
+      });
     if (pairs && pairs.length > 0) {
       extMap[ext.documentId.toString()] = pairs.join('\n  ');
     }
@@ -211,10 +223,11 @@ async function answerWithRAG({ question, orgId, documentId = null, folderId = nu
 You answer user questions using ONLY the context provided below.
 Rules:
 1. When asked about a specific product or document (e.g. OnePlus Buds), answer ONLY from the document that actually mentions that product. Do NOT mix information with other documents.
-2. For Total Amount, GSTIN, Date, and Invoice Number, ALWAYS use the values from [VERIFIED METADATA].
-3. In Indian invoices, currency symbol '₹' may appear misread in OCR text as '3' or 'R' (e.g. '31,499.00' is an OCR misread for ₹1,499.00). In such cases, use the verified total (e.g. 1499).
-4. Be concise, direct, and cite sources using bracket notation like [1].
-5. If the answer cannot be found in the provided context, reply exactly:
+2. ALWAYS prioritize the verified values from [VERIFIED METADATA] for any extracted entity, including Total Amount, Invoice Number, GSTIN, Total Marks, Percentage, Result, Dates, Institution, or Student/Patient Name.
+3. In marksheets/educational certificates: Total Marks (e.g. 399) represents the marks OBTAINED by the student, NOT the maximum marks (maximum marks is usually 500, or 100 per subject). NEVER state that the student scored "X out of X" or "100%" unless explicitly stated. Always use the verified percentage (e.g. 79.8%) if available.
+4. In Indian invoices, currency symbol '₹' may appear misread in OCR text as '3' or 'R' (e.g. '31,499.00' is an OCR misread for ₹1,499.00). In such cases, use the verified total (e.g. 1499).
+5. Be concise, direct, and cite sources using bracket notation like [1].
+6. If the answer cannot be found in the provided context, reply exactly:
 "I could not find this in your documents."`;
 
   const userPrompt = `Context:

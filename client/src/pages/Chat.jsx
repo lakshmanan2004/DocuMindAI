@@ -333,9 +333,9 @@ const Chat = () => {
         </div>
       )}
 
-      {/* Input Form (Controlled Glassmorphism) */}
+      {/* Input Form (Apple iOS 26 Liquid Glass) */}
       <form onSubmit={handleSend} className="pt-2">
-        <div className="relative flex items-center glass bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-md border border-black/10 dark:border-white/10 rounded-[16px] p-1 shadow-sm">
+        <div className="relative flex items-center liquid-glass rounded-[16px] p-1 shadow-sm">
           <input
             type="text"
             value={input}

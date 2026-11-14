@@ -7,6 +7,8 @@
   --text: #1C1C1E;
   --text-secondary: #6B7280;
   --text-tertiary: #8E8E93;
+  --border: rgba(0, 0, 0, 0.06);
+  --border-focus: #007AFF;
   --accent: #007AFF;
   --accent-hover: #0062CC;
   --accent-subtle: rgba(0, 122, 255, 0.08);
@@ -19,18 +21,25 @@
   --indigo: #5856D6;
   --indigo-subtle: rgba(88, 86, 214, 0.12);
 
-  /* Glassmorphism Specs (Controlled) */
-  --glass-bg: rgba(255, 255, 255, 0.78);
-  --glass-border: rgba(0, 0, 0, 0.06);
-  --glass-blur: blur(16px) saturate(160%);
+  /* Apple iOS 26 Liquid Glass Specifications (Controlled: max 3-4 surfaces) */
+  --liquid-glass-bg: rgba(255, 255, 255, 0.72);
+  --liquid-glass-border: rgba(255, 255, 255, 0.5);
+  --liquid-glass-blur: blur(20px) saturate(190%);
+  --liquid-glass-shadow: 0 10px 32px -4px rgba(0, 0, 0, 0.05), inset 0 1px 0 0 rgba(255, 255, 255, 0.8), inset 0 -1px 0 0 rgba(0, 0, 0, 0.02);
+  --liquid-glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 100%);
 
-  /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --glass-bg: var(--liquid-glass-bg);
+  --glass-border: var(--liquid-glass-border);
+  --glass-blur: var(--liquid-glass-blur);
+  --glass-shadow: var(--liquid-glass-shadow);
+
+  /* Standard Solid Surfaces Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.08);
 
-  /* Radii */
+  /* Apple Radii */
   --radius-xs: 6px;
   --radius-sm: 10px;
   --radius-md: 14px;
@@ -47,7 +56,7 @@
 }
 
 .dark {
-  /* Apple iOS Dark Palette (True Black) */
+  /* Apple iOS Dark Palette (True Black OLED) */
   --bg: #000000;
   --surface: #1C1C1E;
   --surface-secondary: #2C2C2E;
@@ -55,6 +64,8 @@
   --text: #F2F2F7;
   --text-secondary: #8E8E93;
   --text-tertiary: #636366;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-focus: #0A84FF;
   --accent: #0A84FF;
   --accent-hover: #409CFF;
   --accent-subtle: rgba(10, 132, 255, 0.15);
@@ -67,43 +78,91 @@
   --indigo: #5E5CE6;
   --indigo-subtle: rgba(94, 92, 230, 0.15);
 
-  --glass-bg: rgba(28, 28, 30, 0.82);
-  --glass-border: rgba(255, 255, 255, 0.09);
+  /* Dark Liquid Glass */
+  --liquid-glass-bg: rgba(28, 28, 30, 0.75);
+  --liquid-glass-border: rgba(255, 255, 255, 0.12);
+  --liquid-glass-blur: blur(20px) saturate(190%);
+  --liquid-glass-shadow: 0 12px 40px -4px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 0 rgba(0, 0, 0, 0.35);
+  --liquid-glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
+
+  --glass-bg: var(--liquid-glass-bg);
+  --glass-border: var(--liquid-glass-border);
+  --glass-blur: var(--liquid-glass-blur);
+  --glass-shadow: var(--liquid-glass-shadow);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
 
-/* Glassmorphism Class (Applied exclusively to navbar, modals, sheets, dropdowns, toast) */
+/* ==========================================================================
+   Liquid Glass Classes (ONLY on Navbar, Sidebar, Dropdowns, Modals, Sheets, Toast, Chat Input)
+   ========================================================================== */
+.liquid-glass,
 .glass {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--liquid-glass-bg);
+  border: 1px solid var(--liquid-glass-border);
+  box-shadow: var(--liquid-glass-shadow);
+  backdrop-filter: var(--liquid-glass-blur);
+  -webkit-backdrop-filter: var(--liquid-glass-blur);
+  position: relative;
 }
 
+/* Refined Specular Light Refraction on Liquid Glass */
+.liquid-glass::before,
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--liquid-glass-highlight);
+  -webkit-mask: linear-gradient(to bottom, black 0%, transparent 45%);
+  mask: linear-gradient(to bottom, black 0%, transparent 45%);
+}
+
+/* Content cards remain SOLID white / #1C1C1E (Zero blur) */
 .card {
   background: var(--surface);
   border-radius: var(--radius-card);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
 }
 
-/* Automatic & Toggleable Lite Mode: Zero blur, solid backgrounds for 60fps performance */
+/* ==========================================================================
+   Lite Mode (Zero-Blur & Reduced Overhead for 60fps responsiveness)
+   ========================================================================== */
+body.lite-mode .liquid-glass,
 body.lite-mode .glass,
+body.lite-mode header,
+body.lite-mode div,
+.lite .liquid-glass,
 .lite .glass {
   background: var(--surface) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: var(--shadow-sm) !important;
+  border: 1px solid var(--border) !important;
+}
+
+body.lite-mode .liquid-glass::before,
+body.lite-mode .glass::before,
+.lite .liquid-glass::before,
+.lite .glass::before {
+  display: none !important;
 }
 
 @media (prefers-reduced-transparency: reduce) {
+  .liquid-glass,
   .glass {
     background: var(--surface) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+  .liquid-glass::before,
+  .glass::before {
+    display: none !important;
   }
 }
 
@@ -115,5 +174,6 @@ body.lite-mode .glass,
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+    transform: none !important;
   }
 }

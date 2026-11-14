@@ -272,10 +272,13 @@ export const SegmentedControl = ({
 // ==========================================
 // 3. Card & Inset Grouped List
 // ==========================================
-export const Card = ({ children, className = '', header, ...props }) => {
+export const Card = ({ children, className = '', header, interactive = false, ...props }) => {
+  const isInteractive = interactive || !!props.onClick;
   return (
     <div
-      className={`card bg-white dark:bg-[#1C1C1E] rounded-[20px] p-5 shadow-[0_2px_12px_rgb(0_0_0_/_0.04)] dark:shadow-[0_4px_20px_rgb(0_0_0_/_0.4)] border border-black/[0.04] dark:border-white/[0.08] ${className}`}
+      className={`card bg-white dark:bg-[#1C1C1E] rounded-[20px] p-5 shadow-[0_2px_12px_rgb(0_0_0_/_0.04)] dark:shadow-[0_4px_20px_rgb(0_0_0_/_0.4)] border border-black/[0.04] dark:border-white/[0.08] ${
+        isInteractive ? 'card-interactive cursor-pointer' : ''
+      } ${className}`}
       {...props}
     >
       {header && <div className="mb-4">{header}</div>}
@@ -406,7 +409,7 @@ export const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' 
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 10 }}
           transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-          className={`relative w-full ${maxWidth} glass bg-white/85 dark:bg-[#1C1C1E]/85 border border-white/50 dark:border-white/10 rounded-[24px] shadow-2xl p-6 z-10 overflow-hidden`}
+          className={`relative w-full ${maxWidth} liquid-glass border border-white/50 dark:border-white/10 rounded-[24px] shadow-2xl p-6 z-10 overflow-hidden`}
         >
           <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/10 mb-4">
             <h3 className="text-lg font-bold text-[#1C1C1E] dark:text-[#F2F2F7] tracking-tight">
@@ -439,7 +442,7 @@ export const Sheet = ({ isOpen, onClose, title, children }) => {
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-          className="relative w-full max-w-md h-full glass bg-white/90 dark:bg-[#1C1C1E]/90 border-l border-white/30 dark:border-white/10 shadow-2xl p-6 z-10 overflow-y-auto"
+          className="relative w-full max-w-md h-full liquid-glass border-l border-white/30 dark:border-white/10 shadow-2xl p-6 z-10 overflow-y-auto"
         >
           <div className="flex items-center justify-between pb-4 border-b border-black/5 dark:border-white/10 mb-5">
             <h3 className="text-xl font-bold text-[#1C1C1E] dark:text-[#F2F2F7] tracking-tight">
@@ -466,7 +469,7 @@ export const Toast = ({ message, type = 'info', onDismiss }) => {
       initial={{ opacity: 0, y: -20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -20, scale: 0.95 }}
-      className="fixed top-5 left-1/2 -translate-x-1/2 z-50 glass bg-white/85 dark:bg-[#2C2C2E]/85 border border-black/10 dark:border-white/10 shadow-lg px-4 py-2.5 rounded-full flex items-center gap-2.5 text-sm font-medium text-[#1C1C1E] dark:text-[#F2F2F7]"
+      className="fixed top-5 left-1/2 -translate-x-1/2 z-50 liquid-glass border border-black/10 dark:border-white/10 shadow-lg px-4 py-2.5 rounded-full flex items-center gap-2.5 text-sm font-medium text-[#1C1C1E] dark:text-[#F2F2F7]"
     >
       {icons[type]}
       <span>{message}</span>

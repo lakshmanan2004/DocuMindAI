@@ -1129,10 +1129,10 @@ const Review = () => {
             ))}
           </div>
 
-          {/* Chat Input Bar (Controlled Glassmorphism) */}
+          {/* Chat Input Bar (Apple iOS 26 Liquid Glass) */}
           <form
             onSubmit={handleSendDocChat}
-            className="p-3 bg-white dark:bg-[#1C1C1E] border-t border-black/5 dark:border-white/10 flex items-center gap-2"
+            className="p-3 liquid-glass border-t border-black/5 dark:border-white/10 flex items-center gap-2"
           >
             <input
               type="text"

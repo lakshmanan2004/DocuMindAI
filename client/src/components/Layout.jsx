@@ -80,12 +80,12 @@ const Layout = () => {
         liteMode ? 'no-blur' : ''
       }`}
     >
-      {/* Top Navigation Bar (Controlled Glassmorphism) */}
+      {/* Top Navigation Bar (Apple iOS 26 Liquid Glass) */}
       <header
         className={`sticky top-0 z-40 w-full border-b border-black/[0.06] dark:border-white/[0.08] transition-colors ${
           liteMode
             ? 'bg-white dark:bg-[#1C1C1E] shadow-sm'
-            : 'glass bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-md'
+            : 'liquid-glass'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">

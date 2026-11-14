@@ -408,20 +408,22 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
     }
   }
 
+  const isBoardOrGov = /^(?:CENTRAL\s*BOARD|STATE\s*BOARD|BOARD\s*OF|DEPARTMENT\s*OF|GOVERNMENT\s*OF|SECONDARY\s*SCHOOL\s*EXAM|SENIOR\s*SCHOOL\s*CERT)/i.test((result.institution || '').trim());
+
   if (detectedSchool) {
     result.institution = detectedSchool;
-  } else if (!result.institution || result.institution.length < 3 || /^(?:not\s*specified|null|n\/a|institution|college|school)$/i.test(result.institution)) {
+  } else if (!result.institution || isBoardOrGov || result.institution.length < 3 || /^(?:not\s*specified|null|n\/a|institution|college|school)$/i.test(result.institution)) {
     const instLabelMatch = fullText.match(/(?:Name\s*of\s*(?:Institute|Institution|School|College|University|Academy)|Institution\s*Name)\s*[:+.-]?\s*([^\n\r]+)/i);
     if (instLabelMatch) {
       result.institution = instLabelMatch[1].trim();
     } else {
-      // Look at the top masthead lines (first 10 lines)
-      for (const line of docLines.slice(0, 10)) {
+      // Look across docLines for school/college/vidyalaya that is NOT a board
+      for (const line of docLines) {
         const trimmed = line.trim();
         if (
           /\b(?:University|Institute|College|School|Academy|Vidyalaya|Polytechnic)\b/i.test(trimmed) &&
           trimmed.length >= 8 &&
-          !/^(?:statement|marksheet|report|marks\s*card|senior\s*school\s*certificate|secondary\s*school\s*examination|central\s*board)/i.test(trimmed)
+          !/^(?:statement|marksheet|report|marks\s*card|senior\s*school\s*certificate|secondary\s*school\s*examination|central\s*board|state\s*board|board\s*of|department\s*of|government\s*of)/i.test(trimmed)
         ) {
           result.institution = trimmed;
           break;
@@ -676,18 +678,26 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
       })
       .filter(Boolean);
 
-    // Check if standard core subjects are present in docLines but missed by LLM (e.g. TAMIL or HEALTH & PHYSICAL EDUCATION)
+    // Check if standard core subjects are present in docLines but missed by LLM
     const coreSubjects = [
       { name: 'TAMIL', regex: /^(?:TAMIL)\b/i },
       { name: 'ENGLISH', regex: /^(?:ENGLISH)\b/i },
-      { name: 'MATHEMATICS', regex: /^(?:MATHEMATIC|MATHS?)\b/i },
+      { name: 'MATHEMATICS', regex: /^(?:MATHEMATICS?|MATHS?)\b/i },
       { name: 'SCIENCE', regex: /^(?:SCIENCE)\b/i },
       { name: 'SOCIAL SCIENCE', regex: /^(?:SOCALSCIENCE|SOCIAL\s*SCIENCE)\b/i },
       { code: '502', name: 'HEALTH & PHYSICAL EDUCATION', regex: /\b502\b.*HEALTH/i }
     ];
 
     for (const core of coreSubjects) {
-      const alreadyHas = result.subjects.some((s) => (core.code && s.code === core.code) || s.name.toLowerCase().includes(core.name.toLowerCase().slice(0, 4)));
+      const alreadyHas = result.subjects.some((s) => {
+        const sName = (s.name || '').toLowerCase().trim();
+        const cName = core.name.toLowerCase().trim();
+        if (core.code && s.code === core.code) return true;
+        if (sName === cName) return true;
+        if (cName === 'science' && sName.includes('social')) return false;
+        return sName.startsWith(cName.slice(0, 4));
+      });
+
       if (!alreadyHas) {
         const line = docLines.find((l) => core.regex.test(l.trim()));
         if (line) {
@@ -701,20 +711,35 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
               grade: 'A1'
             });
           } else {
-            const digitsVal = parseDigitsInWords(line);
-            const singleNum = line.match(/\b0?([1-9]\d{1,2})\b/);
-            const mVal = digitsVal !== null ? digitsVal : (singleNum ? parseInt(singleNum[1], 10) : null);
-            if (mVal !== null) {
-              const gMatch = line.match(/\b([A-E][1-2]|[A-F][+-]?|P|PASS)\s*$/i);
-              result.subjects.push({
-                code: 'N/A',
-                name: core.name,
-                theory: 'N/A',
-                practical: 'N/A',
-                marks: mVal,
-                grade: gMatch ? gMatch[1].toUpperCase() : 'N/A'
-              });
+            const numTriad = line.match(/\b(\d{2,3})\s+(\d{2,3})\s+(\d{2,3})\b/);
+            let theory = 'N/A';
+            let practical = 'N/A';
+            let marks = 'N/A';
+
+            if (numTriad) {
+              const n1 = parseInt(numTriad[1], 10);
+              const n2 = parseInt(numTriad[2], 10);
+              const n3 = parseInt(numTriad[3], 10);
+              if (n1 + n2 === n3) {
+                theory = n1;
+                practical = n2;
+                marks = n3;
+              }
+            } else {
+              const digitsVal = parseDigitsInWords(line);
+              const singleNum = line.match(/\b0?([1-9]\d{1,2})\b/);
+              marks = digitsVal !== null ? digitsVal : (singleNum ? parseInt(singleNum[1], 10) : 'N/A');
             }
+
+            const gMatch = line.match(/\b([A-E][1-2]|[A-F][+-]?|P|PASS)\s*$/i);
+            result.subjects.push({
+              code: 'N/A',
+              name: core.name,
+              theory: theory,
+              practical: practical,
+              marks: marks,
+              grade: gMatch ? gMatch[1].toUpperCase() : 'N/A'
+            });
           }
         }
       }

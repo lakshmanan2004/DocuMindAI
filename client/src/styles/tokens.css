@@ -148,8 +148,6 @@ header.sticky,
    ========================================================================== */
 body.lite-mode .liquid-glass,
 body.lite-mode .glass,
-body.lite-mode header,
-body.lite-mode div,
 .lite .liquid-glass,
 .lite .glass {
   background: var(--surface) !important;

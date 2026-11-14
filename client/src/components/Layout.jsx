@@ -185,12 +185,9 @@ const Layout = () => {
       </header>
 
       {/* Main Body */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full flex-1 flex flex-col">
-        {/* Apple Segmented Navigation Bar (Sticky beneath header) */}
-        <nav
-          className="sticky top-[64px] z-40 flex items-center space-x-1.5 bg-[#F2F2F7]/95 dark:bg-[#000000]/95 backdrop-blur-md p-1.5 rounded-[16px] mb-6 overflow-x-auto scrollbar-none border border-black/[0.04] dark:border-white/[0.06] shadow-xs"
-          style={{ position: 'sticky', top: '64px', zIndex: 40 }}
-        >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 w-full flex-1 flex flex-col min-h-0">
+        {/* Apple Segmented Navigation Bar */}
+        <nav className="flex items-center space-x-1 bg-black/[0.04] dark:bg-white/[0.06] p-1 rounded-[14px] mb-4 overflow-x-auto scrollbar-none border border-black/[0.04] dark:border-white/[0.06] shrink-0">
           {navItems.map((item) => {
             if (item.adminOnly && user?.role !== 'admin') return null;
             if (item.hideForViewer && user?.role === 'viewer') return null;
@@ -200,10 +197,10 @@ const Layout = () => {
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 px-3.5 py-2 rounded-[12px] text-xs font-semibold transition-all shrink-0 cursor-pointer active:scale-95 ${
+                  `flex items-center gap-2 px-3 py-1.5 rounded-[10px] text-xs font-medium transition-all shrink-0 cursor-pointer active:scale-95 ${
                     isActive
-                      ? 'bg-white dark:bg-[#1C1C1E] text-[#007AFF] dark:text-white shadow-sm font-bold'
-                      : 'text-[#6B7280] dark:text-[#8E8E93] hover:text-[#1C1C1E] dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5'
+                      ? 'bg-white dark:bg-[#1C1C1E] text-[#007AFF] dark:text-[#F2F2F7] shadow-xs font-semibold'
+                      : 'text-[#6B7280] dark:text-[#8E8E93] hover:text-[#1C1C1E] dark:hover:text-[#F2F2F7] hover:bg-black/[0.03] dark:hover:bg-white/[0.03]'
                   }`
                 }
               >
@@ -215,7 +212,7 @@ const Layout = () => {
         </nav>
 
         {/* Dynamic Nested Page Content */}
-        <main className="flex-1">
+        <main className="flex-1 flex flex-col min-h-0">
           <Outlet />
         </main>
       </div>

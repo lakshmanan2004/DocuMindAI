@@ -266,20 +266,16 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
   const isDoctorDegree = (name) => {
     if (!name || typeof name !== 'string') return true;
     const s = name.trim();
-    return s.length < 3 || /^(?:md|mbbs|m\.d\.?|dcp|dnb|phd|pathology|pathologist|doctor|dr\.?)\b/i.test(s) || /^(?:dr\.|dr\s)/i.test(s);
+    return s.length < 3 || /^(?:md|mbbs|m\.d\.?|dcp|dnb|phd|pathologist|consultant|doctor|dr\.?)\b/i.test(s) || /^(?:dr\.|dr\s)/i.test(s);
   };
 
   if (isDoctorDegree(result.lab_name)) {
-    const knownLabMatch = fullText.match(/\b(Sterling\s*Accuris(?:\s*Pathology(?:\s*Laboratory)?)?|Dr\.?\s*Lal\s*PathLabs|Metropolis(?:\s*Healthcare)?|Apollo(?:\s*Diagnostics|\s*Hospital)?|Thyrocare|SRL\s*Diagnostics|Suburban\s*Diagnostics|Max\s*Healthcare|Sample\s*Lab)\b/i);
-    if (knownLabMatch) {
-      result.lab_name = knownLabMatch[1].trim();
+    // Generically extract the facility / laboratory name from header or letterhead text
+    const facilityMatch = fullText.match(/(?:^|\n)\s*([A-Za-z0-9\s.,&'-]{3,60}?\s*(?:Laboratory|Laboratories|Diagnostics|Diagnostic\s*Centre|Hospital|Clinic|Health\s*Care|Healthcare|Medical\s*Centre|Pathology|Scan\s*Centre))\b/im);
+    if (facilityMatch && !isDoctorDegree(facilityMatch[1])) {
+      result.lab_name = facilityMatch[1].trim();
     } else {
-      const facilityMatch = fullText.match(/^([A-Za-z0-9\s.,&-]{3,50}(?:Laboratory|Laboratories|Diagnostics|Hospital|Clinic|Health\s*Centre|Health\s*Care))/im);
-      if (facilityMatch && !isDoctorDegree(facilityMatch[1])) {
-        result.lab_name = facilityMatch[1].trim();
-      } else if (result.lab_name && isDoctorDegree(result.lab_name)) {
-        result.lab_name = null;
-      }
+      result.lab_name = null;
     }
   }
 
@@ -372,15 +368,15 @@ const postProcessExtracted = (extracted, fullText, template = {}) => {
   }
 
   // 5. Mark Sheet specifics
-  // Course
+  // Generic Course / Degree Extraction
   if (!result.course || result.course.length < 3 || /^(?:not\s*specified|null|n\/a)$/i.test(result.course)) {
-    const courseMatch = fullText.match(/\b(Bachelor\s*of\s*[A-Za-z\s]+|Master\s*of\s*[A-Za-z\s]+|B\.?Sc\.?(?:\s*\([A-Za-z\s]+\))?|B\.?Tech\.?(?:\s*\([A-Za-z\s]+\))?|B\.?E\.?|B\.?Com\.?|M\.?Sc\.?|M\.?Tech\.?|Diploma\s*in\s*[A-Za-z\s]+|Class\s*(?:X|XII|10th|12th))\b/i);
+    const courseMatch = fullText.match(/\b(Bachelor\s*of\s*[A-Za-z\s]+|Master\s*of\s*[A-Za-z\s]+|B\.?[A-Za-z]{2,5}(?:\s*\([A-Za-z\s&,.-]+\))?|M\.?[A-Za-z]{2,5}(?:\s*\([A-Za-z\s&,.-]+\))?|Diploma\s*in\s*[A-Za-z\s]+|Class\s*(?:X|XII|10th|12th))\b/i);
     if (courseMatch) result.course = courseMatch[0].trim();
   } else {
     result.course = result.course.replace(/~.*$/, '').trim();
-    const pcmMatch = fullText.match(/B\.?Sc\.?\s*\([A-Za-z\s]+\)/i);
-    if (pcmMatch && !result.course.includes('(')) {
-      result.course += ` - ${pcmMatch[0]}`;
+    const branchMatch = fullText.match(/\b(B\.?[A-Za-z]{2,5}|M\.?[A-Za-z]{2,5})\s*\([A-Za-z\s&,.-]+\)/i);
+    if (branchMatch && !result.course.includes('(')) {
+      result.course += ` - ${branchMatch[0]}`;
     }
   }
 

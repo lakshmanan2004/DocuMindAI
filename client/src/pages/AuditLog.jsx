@@ -14,7 +14,8 @@ import {
   CheckCircle2,
   Trash2,
   FileSpreadsheet,
-  AlertCircle
+  AlertCircle,
+  ChevronDown
 } from 'lucide-react';
 import { Button, Card, StatusBadge } from '../ui';
 
@@ -134,21 +135,22 @@ const AuditLog = () => {
 
         {/* Filter Toolbar */}
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-2 bg-white dark:bg-[#1C1C1E] border border-black/[0.08] dark:border-white/[0.08] rounded-[12px] px-3 py-1.5 text-xs shadow-xs">
-            <Filter className="h-3.5 w-3.5 text-[#8E8E93]" />
+          <div className="relative flex items-center gap-2 bg-white dark:bg-[#1C1C1E] border border-black/[0.08] dark:border-white/[0.08] rounded-[12px] pl-3 pr-2 py-1.5 text-xs shadow-xs">
+            <Filter className="h-3.5 w-3.5 text-[#8E8E93] shrink-0" />
             <select
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value)}
-              className="bg-transparent border-none text-[#1C1C1E] dark:text-[#F2F2F7] font-medium text-xs focus:outline-none cursor-pointer"
+              className="bg-transparent appearance-none border-none outline-none text-[#1C1C1E] dark:text-[#F2F2F7] font-medium text-xs pr-6 focus:outline-none focus:ring-0 cursor-pointer"
             >
-              <option value="" className="dark:bg-[#1C1C1E]">All Actions</option>
-              <option value="login" className="dark:bg-[#1C1C1E]">Logins</option>
-              <option value="upload" className="dark:bg-[#1C1C1E]">Uploads</option>
-              <option value="edit" className="dark:bg-[#1C1C1E]">Data Corrections</option>
-              <option value="approve" className="dark:bg-[#1C1C1E]">Approvals</option>
-              <option value="delete" className="dark:bg-[#1C1C1E]">Deletions</option>
-              <option value="export" className="dark:bg-[#1C1C1E]">Excel Exports</option>
+              <option value="" className="dark:bg-[#1C1C1E] dark:text-[#F2F2F7]">All Actions</option>
+              <option value="login" className="dark:bg-[#1C1C1E] dark:text-[#F2F2F7]">Logins</option>
+              <option value="upload" className="dark:bg-[#1C1C1E] dark:text-[#F2F2F7]">Uploads</option>
+              <option value="edit" className="dark:bg-[#1C1C1E] dark:text-[#F2F2F7]">Data Corrections</option>
+              <option value="approve" className="dark:bg-[#1C1C1E] dark:text-[#F2F2F7]">Approvals</option>
+              <option value="delete" className="dark:bg-[#1C1C1E] dark:text-[#F2F2F7]">Deletions</option>
+              <option value="export" className="dark:bg-[#1C1C1E] dark:text-[#F2F2F7]">Excel Exports</option>
             </select>
+            <ChevronDown className="h-3.5 w-3.5 text-[#8E8E93] absolute right-2.5 pointer-events-none" />
           </div>
 
           <button

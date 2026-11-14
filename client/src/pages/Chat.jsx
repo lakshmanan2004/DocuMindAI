@@ -165,20 +165,21 @@ const Chat = () => {
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {/* Document Scope Filter */}
-          <div className="flex items-center gap-2 bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 rounded-[12px] px-3 py-1.5 shadow-xs text-xs w-full sm:w-auto">
-            <Filter className="h-3.5 w-3.5 text-[#8E8E93]" />
+          <div className="relative flex items-center gap-2 bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 rounded-[12px] pl-3 pr-2 py-1.5 shadow-xs text-xs w-full sm:w-auto">
+            <Filter className="h-3.5 w-3.5 text-[#8E8E93] shrink-0" />
             <select
               value={selectedDocId}
               onChange={(e) => setSelectedDocId(e.target.value)}
-              className="bg-transparent border-none text-[#1C1C1E] dark:text-[#F2F2F7] font-medium focus:outline-none cursor-pointer text-xs"
+              className="bg-transparent appearance-none border-none outline-none text-[#1C1C1E] dark:text-[#F2F2F7] font-medium pr-6 focus:outline-none focus:ring-0 cursor-pointer text-xs"
             >
-              <option value="" className="dark:bg-[#1C1C1E]">All Workspace Documents</option>
+              <option value="" className="dark:bg-[#1C1C1E] dark:text-[#F2F2F7]">All Workspace Documents</option>
               {documents.map((doc) => (
-                <option key={doc._id} value={doc._id} className="dark:bg-[#1C1C1E]">
+                <option key={doc._id} value={doc._id} className="dark:bg-[#1C1C1E] dark:text-[#F2F2F7]">
                   {doc.originalName} ({doc.pageCount || 1} p.)
                 </option>
               ))}
             </select>
+            <ChevronDown className="h-3.5 w-3.5 text-[#8E8E93] absolute right-2.5 pointer-events-none" />
           </div>
 
           {/* Reset Button */}
@@ -360,7 +361,7 @@ const Chat = () => {
                 : 'Ask a question across all workspace documents...'
             }
             disabled={loading}
-            className="w-full bg-transparent px-3.5 py-2 text-xs sm:text-sm text-[#1C1C1E] dark:text-[#F2F2F7] placeholder-[#8E8E93] focus:outline-none"
+            className="w-full bg-transparent px-3.5 py-2 text-xs sm:text-sm text-[#1C1C1E] dark:text-[#F2F2F7] placeholder-[#8E8E93] focus:outline-none border-none border-0 outline-none ring-0 focus:ring-0 shadow-none"
           />
           <button
             type="submit"

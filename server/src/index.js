@@ -36,6 +36,7 @@ app.use('/api/folders', require('./routes/folderRoutes'));
 app.use('/api/documents', require('./routes/documentRoutes'));
 app.use('/api/templates', require('./routes/templateRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
+app.use('/api/search', require('./routes/searchRoutes'));
 app.use('/api/export', require('./routes/exportRoutes'));
 app.use('/api/audit', require('./routes/auditRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));

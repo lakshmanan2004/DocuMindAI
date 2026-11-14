@@ -54,14 +54,22 @@ function scoreKeywordMatch(text, query) {
  * @param {string} orgId - Organization ID
  * @param {string} [documentId] - Optional specific document ID
  * @param {number} [limit=10]
+ * @param {string} [folderId] - Optional specific folder ID
  * @returns {Promise<Array<Object>>}
  */
-async function searchChunks(queryVector, orgId, documentId = null, limit = 10) {
+async function searchChunks(queryVector, orgId, documentId = null, limit = 10, folderId = null) {
   const orgObjectId = new mongoose.Types.ObjectId(orgId);
   const filter = { orgId: orgObjectId };
 
   if (documentId && mongoose.Types.ObjectId.isValid(documentId)) {
     filter.documentId = new mongoose.Types.ObjectId(documentId);
+  } else if (folderId && mongoose.Types.ObjectId.isValid(folderId)) {
+    const folderDocs = await Document.find({
+      orgId: orgObjectId,
+      folderId: new mongoose.Types.ObjectId(folderId)
+    }).select('_id');
+    const docIds = folderDocs.map((d) => d._id);
+    filter.documentId = { $in: docIds };
   }
 
   // 1. Primary: MongoDB Atlas $vectorSearch aggregation
@@ -111,6 +119,13 @@ async function searchChunks(queryVector, orgId, documentId = null, limit = 10) {
   const queryFilter = { orgId: orgObjectId };
   if (documentId && mongoose.Types.ObjectId.isValid(documentId)) {
     queryFilter.documentId = new mongoose.Types.ObjectId(documentId);
+  } else if (folderId && mongoose.Types.ObjectId.isValid(folderId)) {
+    const folderDocs = await Document.find({
+      orgId: orgObjectId,
+      folderId: new mongoose.Types.ObjectId(folderId)
+    }).select('_id');
+    const docIds = folderDocs.map((d) => d._id);
+    queryFilter.documentId = { $in: docIds };
   }
 
   const allChunks = await Chunk.find(queryFilter).populate('documentId', 'originalName').lean();
@@ -137,9 +152,10 @@ async function searchChunks(queryVector, orgId, documentId = null, limit = 10) {
  * @param {string} params.question - User question
  * @param {string} params.orgId - Organization ID from auth JWT
  * @param {string} [params.documentId] - Optional document filter
+ * @param {string} [params.folderId] - Optional folder filter
  * @returns {Promise<{ answer: string, sources: Array<Object> }>}
  */
-async function answerWithRAG({ question, orgId, documentId = null }) {
+async function answerWithRAG({ question, orgId, documentId = null, folderId = null }) {
   if (!question || !question.trim()) {
     throw new Error('Question is required');
   }
@@ -148,7 +164,7 @@ async function answerWithRAG({ question, orgId, documentId = null }) {
   const queryVector = await embedQuery(question.trim());
 
   // 2. Retrieve top candidates
-  const candidates = await searchChunks(queryVector, orgId, documentId, 10);
+  const candidates = await searchChunks(queryVector, orgId, documentId, 10, folderId);
 
   if (!candidates || candidates.length === 0) {
     return {
@@ -258,8 +274,63 @@ Answer concisely with citations.`;
   }
 }
 
+/**
+ * Execute Hybrid Search (semantic vector + BM25 keyword matching) across organization documents
+ * @param {Object} params
+ * @param {string} params.query - Search query string
+ * @param {string} params.orgId - Organization ID
+ * @param {string} [params.documentId] - Optional document filter
+ * @param {string} [params.folderId] - Optional folder filter
+ * @param {number} [params.limit=10]
+ * @returns {Promise<Array<Object>>}
+ */
+async function hybridSearch({ query, orgId, documentId = null, folderId = null, limit = 10 }) {
+  if (!query || !query.trim()) return [];
+
+  // Generate embedding for query
+  const queryVector = await embedQuery(query.trim());
+
+  // Search candidate chunks
+  const candidates = await searchChunks(queryVector, orgId, documentId, Math.max(limit * 2, 20), folderId);
+
+  // Score keyword matches and combine
+  candidates.forEach((cand) => {
+    const keywordScore = scoreKeywordMatch(`${cand.documentName} ${cand.text}`, query);
+    cand.semanticScore = cand.score || 0;
+    cand.keywordScore = keywordScore;
+    cand.combinedScore = Number((cand.semanticScore + keywordScore).toFixed(4));
+  });
+
+  // Sort by combined score descending
+  candidates.sort((a, b) => b.combinedScore - a.combinedScore);
+
+  const topHits = candidates.slice(0, limit);
+
+  // Fetch metadata extractions for hit documents
+  const docIds = [...new Set(topHits.map((h) => h.documentId.toString()))];
+  const extractions = await Extraction.find({ documentId: { $in: docIds } }).lean();
+  const extMap = {};
+  for (const ext of extractions) {
+    extMap[ext.documentId.toString()] = ext.fields || [];
+  }
+
+  return topHits.map((hit) => ({
+    documentId: hit.documentId,
+    documentName: hit.documentName,
+    pageNumber: hit.pageNumber,
+    chunkIndex: hit.chunkIndex,
+    text: hit.text,
+    snippet: hit.text.length > 250 ? hit.text.slice(0, 247) + '...' : hit.text,
+    score: hit.combinedScore,
+    semanticScore: Number((hit.semanticScore || 0).toFixed(4)),
+    keywordScore: Number((hit.keywordScore || 0).toFixed(4)),
+    extractedFields: extMap[hit.documentId.toString()] || []
+  }));
+}
+
 module.exports = {
   answerWithRAG,
+  hybridSearch,
   searchChunks,
   cosineSimilarity,
   scoreKeywordMatch

@@ -22,7 +22,9 @@ import {
   FolderPlus,
   Edit2,
   MoreVertical,
-  Calendar
+  Calendar,
+  Download,
+  ChevronDown
 } from 'lucide-react';
 import { Button, IconButton, Card, Input, Select, StatusBadge, Modal } from '../ui';
 
@@ -49,6 +51,47 @@ const Library = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [reprocessingId, setReprocessingId] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+
+  const handleExport = async (format = 'excel') => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const payload = {};
+      if (selectedIds.size > 0) {
+        payload.documentIds = Array.from(selectedIds);
+      }
+
+      const endpoint = format === 'csv' ? '/export/csv' : '/export/excel';
+      const res = await api.post(endpoint, payload, { responseType: 'blob' });
+
+      const blob = new Blob([res.data], {
+        type:
+          format === 'csv'
+            ? 'text/csv;charset=utf-8;'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.setAttribute(
+        'download',
+        `DocuMind_Export_${timestamp}.${format === 'csv' ? 'csv' : 'xlsx'}`
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Failed to export documents. Please try again.');
+    } finally {
+      setExporting(false);
+      setShowExportDropdown(false);
+    }
+  };
 
   // Folder Modals
   const [showFolderModal, setShowFolderModal] = useState(false);
@@ -263,6 +306,59 @@ const Library = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Export Dropdown (Milestone M7) */}
+          {user?.role !== 'viewer' && (
+            <div className="relative">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={FileSpreadsheet}
+                onClick={() => setShowExportDropdown((prev) => !prev)}
+                disabled={exporting}
+                className="flex items-center gap-1.5"
+              >
+                {exporting ? 'Exporting...' : selectedIds.size > 0 ? `Export (${selectedIds.size})` : 'Export'}
+                <ChevronDown className="w-3.5 h-3.5 ml-0.5 opacity-70" />
+              </Button>
+
+              {showExportDropdown && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setShowExportDropdown(false)}
+                  />
+                  <div className="absolute right-0 mt-1.5 w-60 bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 rounded-xl shadow-lg z-30 py-1.5 text-xs">
+                    <div className="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      Export Options {selectedIds.size > 0 ? `(${selectedIds.size} Selected)` : '(All)'}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleExport('excel')}
+                      className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                      <div>
+                        <div className="font-medium">Excel (.xlsx) Multi-Sheet</div>
+                        <div className="text-[10px] text-slate-400">Includes separate sheets for tables</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExport('csv')}
+                      className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 cursor-pointer"
+                    >
+                      <Download className="w-4 h-4 text-indigo-600" />
+                      <div>
+                        <div className="font-medium">Flat CSV (.csv)</div>
+                        <div className="text-[10px] text-slate-400">Standard tabular comma-separated values</div>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {selectedIds.size > 0 && user?.role !== 'viewer' && (
             <Button
               variant="destructive"

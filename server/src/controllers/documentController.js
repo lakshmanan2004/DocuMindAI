@@ -630,6 +630,53 @@ const bulkDeleteDocuments = async (req, res, next) => {
   }
 };
 
+/**
+ * Get or generate AI summary for a document
+ * GET /api/documents/:id/summary?format=short|detailed|executive
+ */
+const getDocumentSummary = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const format = req.query.format || 'detailed';
+    const regenerate = req.query.regenerate === 'true';
+
+    const { generateDocumentSummary } = require('../services/summary');
+    const result = await generateDocumentSummary({
+      documentId: id,
+      orgId: req.user.orgId,
+      format,
+      regenerate
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Regenerate AI summary for a document
+ * POST /api/documents/:id/summary
+ */
+const createDocumentSummary = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { format } = req.body;
+
+    const { generateDocumentSummary } = require('../services/summary');
+    const result = await generateDocumentSummary({
+      documentId: id,
+      orgId: req.user.orgId,
+      format: format || 'detailed',
+      regenerate: true
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   uploadDocument,
   getDocuments,
@@ -641,5 +688,7 @@ module.exports = {
   reprocessDocument,
   getDocumentFile,
   deleteDocument,
-  bulkDeleteDocuments
+  bulkDeleteDocuments,
+  getDocumentSummary,
+  createDocumentSummary
 };

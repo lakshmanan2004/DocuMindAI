@@ -68,6 +68,12 @@ const documentSchema = new mongoose.Schema(
     pageCount: {
       type: Number,
       default: 0
+    },
+    summary: {
+      short: { type: String, default: null },
+      detailed: { type: String, default: null },
+      executive: { type: String, default: null },
+      lastGeneratedAt: { type: Date, default: null }
     }
   },
   {

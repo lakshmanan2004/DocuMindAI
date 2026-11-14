@@ -12,7 +12,9 @@ const {
   reprocessDocument,
   getDocumentFile,
   deleteDocument,
-  bulkDeleteDocuments
+  bulkDeleteDocuments,
+  getDocumentSummary,
+  createDocumentSummary
 } = require('../controllers/documentController');
 const authenticate = require('../middleware/auth');
 const { allow } = require('../middleware/role');
@@ -75,5 +77,9 @@ router.post('/:id/reprocess', allow('admin', 'reviewer'), reprocessDocument);
 router.get('/:id/extraction', getDocumentExtraction);
 router.put('/:id/extraction', allow('admin', 'reviewer'), saveExtractionCorrections);
 router.post('/:id/approve', allow('admin', 'reviewer'), approveDocument);
+
+// AI Summaries (M7)
+router.get('/:id/summary', getDocumentSummary);
+router.post('/:id/summary', allow('admin', 'reviewer', 'employee'), createDocumentSummary);
 
 module.exports = router;

@@ -16,7 +16,7 @@ Rules: Tier 1 is mandatory (M0 to M8). Prove every milestone with all 5 document
 | **M4** | **Template Engine & 5 Built-ins** | Generic field types (string, number, date, boolean, list, table), validation engine, 5 built-in templates seeded, template builder UI & test sandbox | ✅ Complete | • New org gets 5 templates<br>• Builder creates table fields and rules<br>• Duplicate template creates copy<br>• Test box tests text without saving<br>• Delete template in use blocked with 409 |
 | **M5** | **Classification, Extraction & Review** | Auto-classification via Llama (with fallback to Other), windowed extraction (schema-driven), rule evaluation, confidence scoring, side-by-side Review UI | ✅ Complete | • All 5 document types classified & extracted (Invoice, Agreement, Marksheet, Lab Report, PO)<br>• Table fields render editable grids<br>• Windowed extraction for >12k chars verified<br>• Manual corrections persist & approval transitions to 'reviewed' |
 | **M6** | **Chat (RAG) & Hybrid Search** | Scoped chat (document, folder, library), vector search with orgId filter, exact fallback sentence, sources with page jumps, hybrid search page | ✅ Complete | • Correct answer with citations<br>• Exact fallback: "I could not find this in your documents."<br>• Zero cross-tenant leaks<br>• Folder & document scoping verified<br>• Hybrid search (vector + keyword) verified |
-| **M7** | **Summaries & Multi-Sheet Export** | Short, Detailed, Executive summaries; chunked summary for long docs; Excel export with separate sheets for table fields; CSV export | ⏳ Pending | • 3 summary formats working<br>• Excel contains multi-sheet table data<br>• Grouping by template works |
+| **M7** | **Summaries & Multi-Sheet Export** | Short, Detailed, Executive summaries; chunked summary for long docs; Excel export with separate sheets for table fields; CSV export | ✅ Complete | • 3 summary formats working (Short, Detailed, Executive)<br>• Caching & fast re-generation<br>• Excel contains multi-sheet table data (Items, Subjects, Tests)<br>• Grouping by template verified<br>• Flat RFC-4180 CSV export verified |
 | **M8** | **Dashboard, Audit & Hardening** | Metrics dashboard, audit log table with filters, settings (theme + Lite mode), empty/loading/error states, seed script, README | ⏳ Pending | • Fresh install & seed works<br>• Full audit coverage<br>• 60fps scrolling & fast response |
 
 ---
@@ -42,8 +42,8 @@ Rules: Tier 1 is mandatory (M0 to M8). Prove every milestone with all 5 document
 - [x] Review: Side-by-side review, low-confidence markers, issues panel, save, approve
 - [x] Chat: Document, folder and library scope; citations; exact not-found sentence
 - [x] Search: Keyword plus semantic search page
-- [ ] Summary: Short, detailed, executive; long document handling
-- [ ] Export: Excel (with table sheets) and CSV
+- [x] Summary: Short, detailed, executive; long document handling
+- [x] Export: Excel (with table sheets) and CSV
 - [ ] Admin: Dashboard, audit log, settings
 - [ ] UI: iOS-style design system implemented once (tokens, components) and used by every screen; glass only on navigation and overlays
 - [ ] UI: Lite mode: automatic on weak devices, manual toggle, reduced-motion respected

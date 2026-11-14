@@ -27,7 +27,9 @@ import {
   Bot,
   RotateCcw,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Button, Card, StatusBadge, ConfidenceBar, SegmentedControl, Modal, Select, IconButton } from '../ui';
 
@@ -85,6 +87,43 @@ const Review = () => {
       docChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [docChatMessages, docChatLoading, activeTab]);
+
+  // AI Summary State (Milestone M7)
+  const [summaryFormat, setSummaryFormat] = useState('detailed');
+  const [summaryText, setSummaryText] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryMeta, setSummaryMeta] = useState(null);
+  const [summaryCopied, setSummaryCopied] = useState(false);
+
+  const fetchSummary = async (fmt = summaryFormat, regenerate = false) => {
+    if (!id) return;
+    setSummaryLoading(true);
+    try {
+      const res = await api.get(`/documents/${id}/summary`, {
+        params: { format: fmt, regenerate }
+      });
+      setSummaryText(res.data.summary);
+      setSummaryMeta(res.data);
+    } catch (err) {
+      console.error('Failed to fetch summary:', err);
+      setSummaryText('Failed to generate summary. Please ensure Ollama is running.');
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'summary') {
+      fetchSummary(summaryFormat);
+    }
+  }, [activeTab, summaryFormat, id]);
+
+  const handleCopySummary = () => {
+    if (!summaryText) return;
+    navigator.clipboard.writeText(summaryText);
+    setSummaryCopied(true);
+    setTimeout(() => setSummaryCopied(false), 2000);
+  };
 
   const handleSendDocChat = async (e) => {
     e?.preventDefault();
@@ -830,14 +869,134 @@ const Review = () => {
         </Card>
       )}
 
-      {/* TAB 3: SUMMARY */}
+      {/* TAB 3: SUMMARY (Milestone M7) */}
       {activeTab === 'summary' && (
-        <Card className="text-center py-16 space-y-3">
-          <Sparkles className="w-8 h-8 text-[#007AFF] mx-auto animate-pulse" />
-          <h3 className="text-sm font-bold text-[#1C1C1E] dark:text-[#F2F2F7]">AI Summaries</h3>
-          <p className="text-xs text-[#6B7280] max-w-sm mx-auto">
-            Available under Milestone M7 (Short, Detailed, and Executive summaries).
-          </p>
+        <Card className="p-6 space-y-6">
+          {/* Summary Mode Controls & Actions */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-white/10">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                AI Document Summary
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Synthesized by Llama 3.2 grounded in verified metadata extractions
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => fetchSummary(summaryFormat, true)}
+                disabled={summaryLoading}
+                className="flex items-center gap-1.5 text-xs"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${summaryLoading ? 'animate-spin' : ''}`} />
+                Regenerate
+              </Button>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleCopySummary}
+                disabled={summaryLoading || !summaryText}
+                className="flex items-center gap-1.5 text-xs"
+              >
+                {summaryCopied ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-white" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy Summary
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Format Selector Pills */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              {
+                id: 'short',
+                label: 'Short Summary',
+                desc: '1-2 concise sentences summarizing key purpose, counterparty, and total.'
+              },
+              {
+                id: 'detailed',
+                label: 'Detailed Summary',
+                desc: 'Structured breakdown with overview paragraph and categorized bullet points.'
+              },
+              {
+                id: 'executive',
+                label: 'Executive Briefing',
+                desc: 'Comprehensive briefing: metrics, deliverables, action items & risk assessment.'
+              }
+            ].map((fmt) => {
+              const isActive = summaryFormat === fmt.id;
+              return (
+                <button
+                  key={fmt.id}
+                  onClick={() => {
+                    setSummaryFormat(fmt.id);
+                    fetchSummary(fmt.id);
+                  }}
+                  disabled={summaryLoading}
+                  className={`p-3 text-left rounded-xl border transition-all text-xs ${
+                    isActive
+                      ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-600 shadow-sm'
+                      : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/10 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="font-semibold text-slate-900 dark:text-white flex items-center justify-between mb-1">
+                    <span>{fmt.label}</span>
+                    {isActive && <span className="h-2 w-2 rounded-full bg-indigo-600 dark:bg-indigo-400" />}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                    {fmt.desc}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Meta Info Bar */}
+          {summaryMeta && (
+            <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-white/[0.02] px-3.5 py-2 rounded-lg border border-slate-100 dark:border-white/5">
+              <span>
+                Format: <strong className="text-slate-700 dark:text-slate-300 capitalize">{summaryFormat}</strong>
+              </span>
+              <span>
+                {summaryMeta.fromCache ? '⚡ Instant (Cached)' : '✨ Newly Generated'}
+                {summaryMeta.lastGeneratedAt && (
+                  <> • {new Date(summaryMeta.lastGeneratedAt).toLocaleTimeString()}</>
+                )}
+              </span>
+            </div>
+          )}
+
+          {/* Content Area */}
+          {summaryLoading ? (
+            <div className="py-16 text-center space-y-3">
+              <RefreshCw className="h-8 w-8 text-indigo-600 animate-spin mx-auto" />
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Generating {summaryFormat} summary with Llama 3.2...
+              </p>
+              <p className="text-xs text-slate-400">
+                Analyzing verified metadata and page contents
+              </p>
+            </div>
+          ) : (
+            <div className="bg-slate-50/50 dark:bg-black/20 rounded-xl p-5 border border-slate-100 dark:border-white/5">
+              <div className="prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-sans text-xs sm:text-sm">
+                {summaryText}
+              </div>
+            </div>
+          )}
         </Card>
       )}
 

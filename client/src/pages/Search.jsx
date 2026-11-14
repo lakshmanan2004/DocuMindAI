@@ -5,15 +5,9 @@ import {
   Search as SearchIcon,
   FileText,
   Sparkles,
-  ExternalLink,
-  Layers,
-  ChevronRight,
-  Filter,
-  BarChart3,
-  Calendar,
-  Folder
+  ExternalLink
 } from 'lucide-react';
-import { Card, Button, StatusBadge } from '../ui';
+import { Card, Button } from '../ui';
 
 const Search = () => {
   const navigate = useNavigate();
@@ -76,39 +70,41 @@ const Search = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-indigo-600" />
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1C1C1E] dark:text-[#F2F2F7] flex items-center gap-2">
+          <div className="h-7 w-7 rounded-[8px] bg-[#007AFF]/12 text-[#007AFF] flex items-center justify-center">
+            <Sparkles className="h-4 w-4" />
+          </div>
           Hybrid AI Search
         </h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-[#6B7280] dark:text-[#8E8E93]">
           Search across all documents combining vector semantic similarity (nomic-embed-text) and exact keyword matching.
         </p>
       </div>
 
-      {/* Search Input Bar */}
+      {/* Apple Spotlight Style Search Bar */}
       <Card className="p-4 shadow-sm">
         <form onSubmit={handleFormSubmit} className="space-y-3">
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col sm:flex-row gap-2.5">
             <div className="relative flex-1">
-              <SearchIcon className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+              <SearchIcon className="absolute left-3.5 top-3 h-4 w-4 text-[#8E8E93]" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search across all document text, invoices, marks, tests, terms..."
-                className="w-full pl-10 pr-4 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
+                className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm rounded-[12px] bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 focus:outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 text-[#1C1C1E] dark:text-[#F2F2F7] transition-all"
               />
             </div>
 
             {/* Folder Scoping */}
-            <div className="flex items-center gap-2 sm:w-56 shrink-0">
+            <div className="flex items-center gap-2 sm:w-52 shrink-0">
               <select
                 value={selectedFolder}
                 onChange={(e) => setSelectedFolder(e.target.value)}
-                className="w-full py-2 px-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                className="w-full py-2.5 px-3 text-xs rounded-[12px] bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 text-[#1C1C1E] dark:text-[#F2F2F7] focus:outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 cursor-pointer transition-all"
               >
                 <option value="">All Folders</option>
                 {folders.map((f) => (
@@ -127,7 +123,7 @@ const Search = () => {
 
           {/* Quick Suggestions */}
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-[11px] text-slate-400 font-medium">Try searching:</span>
+            <span className="text-[11px] text-[#8E8E93] font-medium">Try searching:</span>
             {[
               'total marks obtained',
               'invoice grand total',
@@ -142,7 +138,7 @@ const Search = () => {
                   setQuery(s);
                   handleSearch(s);
                 }}
-                className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400 transition-colors border border-slate-200/60 dark:border-slate-700"
+                className="text-[11px] px-3 py-1 rounded-full bg-black/5 dark:bg-white/10 text-[#1C1C1E] dark:text-[#F2F2F7] hover:bg-[#007AFF]/10 hover:text-[#007AFF] transition-all border border-black/5 dark:border-white/10 cursor-pointer active:scale-95"
               >
                 {s}
               </button>
@@ -153,7 +149,7 @@ const Search = () => {
 
       {/* Results Area */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between text-xs text-slate-500">
+        <div className="flex items-center justify-between text-xs text-[#8E8E93]">
           <span>
             {searched
               ? `Found ${results.length} relevant snippet${results.length === 1 ? '' : 's'}`
@@ -163,16 +159,16 @@ const Search = () => {
 
         {loading && (
           <div className="py-16 text-center space-y-3">
-            <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs text-slate-500">Computing hybrid vector + keyword scores...</p>
+            <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs text-[#8E8E93]">Computing hybrid vector + keyword scores...</p>
           </div>
         )}
 
         {!loading && searched && results.length === 0 && (
           <Card className="py-16 text-center space-y-2">
-            <SearchIcon className="h-8 w-8 text-slate-400 mx-auto" />
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">No results found</p>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            <SearchIcon className="h-8 w-8 text-[#8E8E93] mx-auto" />
+            <p className="text-sm font-semibold text-[#1C1C1E] dark:text-[#F2F2F7]">No results found</p>
+            <p className="text-xs text-[#8E8E93] max-w-sm mx-auto">
               We could not find any matching documents or text chunks for "{query}". Try broader search terms.
             </p>
           </Card>
@@ -183,20 +179,20 @@ const Search = () => {
             {results.map((res, idx) => (
               <Card
                 key={idx}
-                className="p-4 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all cursor-pointer group"
-                onClick={() => navigate(`/review/${res.documentId}`)}
+                className="p-4 hover:border-[#007AFF]/40 hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer group"
+                onClick={() => navigate(`/documents/${res.documentId}`)}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-black/5 dark:border-white/10">
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shrink-0">
+                    <div className="p-1.5 rounded-[8px] bg-[#007AFF]/10 text-[#007AFF] shrink-0">
                       <FileText className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors flex items-center gap-1.5">
+                      <h3 className="text-sm font-bold text-[#1C1C1E] dark:text-[#F2F2F7] group-hover:text-[#007AFF] transition-colors flex items-center gap-1.5">
                         {res.documentName}
                         <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </h3>
-                      <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                      <div className="flex items-center gap-2 text-[11px] text-[#8E8E93]">
                         <span>Page {res.pageNumber}</span>
                         {res.docType && <span>• {res.docType}</span>}
                       </div>
@@ -207,19 +203,19 @@ const Search = () => {
                   <div className="flex items-center gap-2 text-[10px] font-mono shrink-0">
                     <span
                       title="Combined Hybrid Score"
-                      className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800"
+                      className="px-2 py-0.5 rounded-full bg-[#007AFF]/12 text-[#007AFF] font-bold"
                     >
                       Total: {res.score?.toFixed(2) || '0.00'}
                     </span>
                     <span
                       title="Semantic Cosine Similarity"
-                      className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                      className="px-2 py-0.5 rounded-full bg-[#34C759]/12 text-[#34C759] font-medium"
                     >
                       Semantic: {res.semanticScore?.toFixed(2) || '0.00'}
                     </span>
                     <span
                       title="Keyword BM25 Match"
-                      className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                      className="px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-[#8E8E93]"
                     >
                       Keyword: {res.keywordScore?.toFixed(2) || '0.00'}
                     </span>
@@ -227,7 +223,7 @@ const Search = () => {
                 </div>
 
                 {/* Text Snippet */}
-                <p className="mt-3 text-xs leading-relaxed text-slate-700 dark:text-slate-300 font-mono bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 line-clamp-3">
+                <p className="mt-3 text-xs leading-relaxed text-[#1C1C1E] dark:text-[#F2F2F7] font-mono bg-[#F2F2F7] dark:bg-[#2C2C2E] p-2.5 rounded-[10px] border border-black/5 dark:border-white/10 line-clamp-3">
                   "{res.text}"
                 </p>
               </Card>
@@ -240,4 +236,3 @@ const Search = () => {
 };
 
 export default Search;
-

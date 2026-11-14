@@ -9,12 +9,10 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
-  Check,
-  X,
   UserCheck,
   UserX
 } from 'lucide-react';
-import { Button, Card, Modal, Input, Select, StatusBadge } from '../ui';
+import { Button, Card, Modal, Input, Select } from '../ui';
 
 const Users = () => {
   const { user: currentUser } = useAuth();
@@ -115,31 +113,33 @@ const Users = () => {
   const getRoleBadge = (role) => {
     switch (role) {
       case 'admin':
-        return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+        return 'bg-[#5856D6]/12 text-[#5856D6] border-[#5856D6]/25';
       case 'reviewer':
-        return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+        return 'bg-[#34C759]/12 text-[#34C759] border-[#34C759]/25';
       case 'employee':
-        return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+        return 'bg-[#FF9500]/12 text-[#FF9500] border-[#FF9500]/25';
       default:
-        return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+        return 'bg-black/5 dark:bg-white/10 text-[#8E8E93] border-black/10 dark:border-white/10';
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
-          <h1 className="text-2xl font-bold text-[#1C1C1E] dark:text-[#F2F2F7] tracking-tight flex items-center gap-2">
-            <UsersIcon className="h-6 w-6 text-[#007AFF]" />
-            Team & Role Management
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1E] dark:text-[#F2F2F7] tracking-tight flex items-center gap-2">
+            <div className="h-7 w-7 rounded-[8px] bg-[#007AFF]/12 text-[#007AFF] flex items-center justify-center">
+              <UsersIcon className="h-4 w-4" />
+            </div>
+            Team & Roles
           </h1>
-          <p className="text-sm text-[#6B7280] mt-1">
+          <p className="text-sm text-[#6B7280] dark:text-[#8E8E93] mt-0.5">
             Manage organization members, assign roles (Admin, Employee, Reviewer, Viewer), and manage account activations.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <Button
             variant="secondary"
             size="sm"
@@ -161,38 +161,38 @@ const Users = () => {
 
       {/* Notifications */}
       {success && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4" /> {success}
+        <div className="p-3.5 rounded-[14px] bg-[#34C759]/10 border border-[#34C759]/20 text-[#34C759] text-xs font-semibold flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 shrink-0" /> {success}
         </div>
       )}
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" /> {error}
+        <div className="p-3.5 rounded-[14px] bg-[#FF3B30]/10 border border-[#FF3B30]/20 text-[#FF3B30] text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" /> {error}
         </div>
       )}
 
-      {/* User Table */}
-      <Card className="p-0 overflow-hidden">
+      {/* User Table (Apple Style) */}
+      <Card className="p-0 overflow-hidden shadow-xs">
         {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center text-gray-400">
-            <RefreshCw className="h-8 w-8 animate-spin text-[#007AFF] mb-3" />
-            <p className="text-sm">Fetching team members...</p>
+          <div className="py-20 flex flex-col items-center justify-center text-[#8E8E93]">
+            <RefreshCw className="h-7 w-7 animate-spin text-[#007AFF] mb-2.5" />
+            <p className="text-xs font-medium">Fetching team members...</p>
           </div>
         ) : users.length === 0 ? (
-          <div className="py-16 text-center text-gray-400 text-sm">
+          <div className="py-16 text-center text-[#8E8E93] text-sm">
             No team members found.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/10 text-[#6B7280] font-semibold text-xs uppercase tracking-wider">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/10 text-[#8E8E93] font-semibold text-[11px] uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-4">User</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Current Role</th>
-                  <th className="px-6 py-4">Change Role</th>
-                  <th className="px-6 py-4">Joined</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="px-5 py-3.5">User</th>
+                  <th className="px-4 py-3.5">Status</th>
+                  <th className="px-4 py-3.5">Current Role</th>
+                  <th className="px-4 py-3.5">Change Role</th>
+                  <th className="px-4 py-3.5">Joined</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
@@ -200,45 +200,45 @@ const Users = () => {
                   const isSelf = u._id === currentUser?.id;
                   const isActive = u.isActive !== false;
                   return (
-                    <tr key={u._id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-semibold text-[#1C1C1E] dark:text-[#F2F2F7] flex items-center gap-2">
+                    <tr key={u._id} className="hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors">
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <div className="font-semibold text-[#1C1C1E] dark:text-[#F2F2F7] flex items-center gap-1.5">
                           {u.name}
                           {isSelf && (
-                            <span className="text-[10px] bg-[#007AFF]/10 text-[#007AFF] px-1.5 py-0.5 rounded font-bold">
+                            <span className="text-[10px] bg-[#007AFF]/12 text-[#007AFF] px-1.5 py-0.5 rounded-full font-bold">
                               You
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-[#6B7280]">{u.email}</div>
+                        <div className="text-[11px] text-[#8E8E93]">{u.email}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                             isActive
-                              ? 'bg-[#34C759]/15 text-[#34C759]'
-                              : 'bg-[#FF3B30]/15 text-[#FF3B30]'
+                              ? 'bg-[#34C759]/12 text-[#34C759]'
+                              : 'bg-[#FF3B30]/12 text-[#FF3B30]'
                           }`}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#34C759]' : 'bg-[#FF3B30]'}`} />
                           {isActive ? 'Active' : 'Deactivated'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${getRoleBadge(
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${getRoleBadge(
                             u.role
                           )}`}
                         >
                           {u.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <select
                           disabled={isSelf}
                           value={u.role}
                           onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                          className="px-2.5 py-1.5 bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 rounded-lg text-xs font-medium text-[#1C1C1E] dark:text-[#F2F2F7] focus:outline-none focus:ring-2 focus:ring-[#007AFF] disabled:opacity-50 cursor-pointer"
+                          className="px-2.5 py-1.5 bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-[10px] text-xs font-medium text-[#1C1C1E] dark:text-[#F2F2F7] focus:outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 disabled:opacity-40 cursor-pointer transition-all"
                         >
                           <option value="admin">Admin</option>
                           <option value="reviewer">Reviewer</option>
@@ -246,16 +246,16 @@ const Users = () => {
                           <option value="viewer">Viewer (Read-Only)</option>
                         </select>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-xs text-[#6B7280]">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-xs text-[#8E8E93]">
                         {u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '—'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                      <td className="px-5 py-3.5 whitespace-nowrap text-right space-x-1">
                         {!isSelf && (
                           <>
                             <button
                               onClick={() => handleToggleActive(u._id, isActive)}
                               title={isActive ? 'Deactivate user' : 'Activate user'}
-                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              className={`p-1.5 rounded-[8px] transition-colors cursor-pointer active:scale-95 ${
                                 isActive
                                   ? 'text-[#FF9500] hover:bg-[#FF9500]/10'
                                   : 'text-[#34C759] hover:bg-[#34C759]/10'
@@ -266,7 +266,7 @@ const Users = () => {
                             <button
                               onClick={() => handleDeleteUser(u._id, u.name)}
                               title="Remove user"
-                              className="p-1.5 text-gray-400 hover:text-[#FF3B30] hover:bg-[#FF3B30]/10 rounded-lg transition-colors cursor-pointer"
+                              className="p-1.5 text-[#8E8E93] hover:text-[#FF3B30] hover:bg-[#FF3B30]/10 rounded-[8px] transition-colors cursor-pointer active:scale-95"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -283,33 +283,33 @@ const Users = () => {
       </Card>
 
       {/* Role Hierarchy Reference Card */}
-      <Card className="bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/10">
+      <Card className="bg-black/[0.015] dark:bg-white/[0.02] border border-black/5 dark:border-white/10 p-5">
         <h3 className="font-bold text-[#1C1C1E] dark:text-[#F2F2F7] text-xs uppercase tracking-wider flex items-center gap-1.5 mb-3">
           <ShieldCheck className="h-4 w-4 text-[#007AFF]" />
           4-Tier Permissions Guide (Tenant Isolation)
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-          <div className="bg-white dark:bg-[#1C1C1E] p-3 rounded-xl border border-black/5 dark:border-white/10">
-            <span className="font-bold text-purple-600 uppercase text-[11px]">Org Admin</span>
-            <p className="text-[#6B7280] mt-1 leading-relaxed">
+          <div className="bg-white dark:bg-[#1C1C1E] p-3.5 rounded-[14px] border border-black/5 dark:border-white/10">
+            <span className="font-bold text-[#5856D6] uppercase text-[11px]">Org Admin</span>
+            <p className="text-[#6B7280] dark:text-[#8E8E93] mt-1 leading-relaxed text-[11px]">
               Full control. Manages templates, users, audit logs, and can delete any document.
             </p>
           </div>
-          <div className="bg-white dark:bg-[#1C1C1E] p-3 rounded-xl border border-black/5 dark:border-white/10">
-            <span className="font-bold text-emerald-600 uppercase text-[11px]">Reviewer</span>
-            <p className="text-[#6B7280] mt-1 leading-relaxed">
+          <div className="bg-white dark:bg-[#1C1C1E] p-3.5 rounded-[14px] border border-black/5 dark:border-white/10">
+            <span className="font-bold text-[#34C759] uppercase text-[11px]">Reviewer</span>
+            <p className="text-[#6B7280] dark:text-[#8E8E93] mt-1 leading-relaxed text-[11px]">
               Edits extracted fields, validates rules, approves documents, exports to Excel.
             </p>
           </div>
-          <div className="bg-white dark:bg-[#1C1C1E] p-3 rounded-xl border border-black/5 dark:border-white/10">
-            <span className="font-bold text-amber-600 uppercase text-[11px]">Employee</span>
-            <p className="text-[#6B7280] mt-1 leading-relaxed">
+          <div className="bg-white dark:bg-[#1C1C1E] p-3.5 rounded-[14px] border border-black/5 dark:border-white/10">
+            <span className="font-bold text-[#FF9500] uppercase text-[11px]">Employee</span>
+            <p className="text-[#6B7280] dark:text-[#8E8E93] mt-1 leading-relaxed text-[11px]">
               Uploads documents, chats with RAG, exports data. Can delete only own uploads.
             </p>
           </div>
-          <div className="bg-white dark:bg-[#1C1C1E] p-3 rounded-xl border border-black/5 dark:border-white/10">
-            <span className="font-bold text-slate-500 uppercase text-[11px]">Viewer</span>
-            <p className="text-[#6B7280] mt-1 leading-relaxed">
+          <div className="bg-white dark:bg-[#1C1C1E] p-3.5 rounded-[14px] border border-black/5 dark:border-white/10">
+            <span className="font-bold text-[#8E8E93] uppercase text-[11px]">Viewer</span>
+            <p className="text-[#6B7280] dark:text-[#8E8E93] mt-1 leading-relaxed text-[11px]">
               Read-only auditor. Can view documents and query AI Chat. Action buttons hidden.
             </p>
           </div>
@@ -320,7 +320,7 @@ const Users = () => {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title="Add Team Member"
+        title="Add Organization Member"
       >
         <form onSubmit={handleCreateUser} className="space-y-4">
           <Input
@@ -328,41 +328,38 @@ const Users = () => {
             required
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g. John Doe"
+            placeholder="e.g. Sarah Jenkins"
           />
-
           <Input
-            label="Email Address"
+            label="Work Email"
             type="email"
             required
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            placeholder="john@example.com"
+            placeholder="sarah@company.com"
           />
-
           <Input
-            label="Temporary Password (min 8 characters)"
+            label="Password (min 8 characters)"
             type="password"
             required
             minLength={8}
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            placeholder="Min 8 characters"
+            placeholder="••••••••"
           />
-
           <Select
             label="Assign Role"
             value={formData.role}
             onChange={(e) => setFormData({ ...formData, role: e.target.value })}
             options={[
-              { label: 'Employee (Upload & View)', value: 'employee' },
-              { label: 'Reviewer (Edit & Approve)', value: 'reviewer' },
-              { label: 'Org Admin (Full Access)', value: 'admin' },
-              { label: 'Viewer (Read-Only)', value: 'viewer' }
+              { label: 'Employee (Upload, Chat, Export)', value: 'employee' },
+              { label: 'Reviewer (Review & Verify Fields, Export)', value: 'reviewer' },
+              { label: 'Viewer (Read-Only)', value: 'viewer' },
+              { label: 'Org Admin (Full Administrative Access)', value: 'admin' }
             ]}
           />
 
-          <div className="pt-3 flex items-center justify-end gap-2 border-t border-black/5 dark:border-white/10">
+          <div className="flex justify-end gap-2 pt-3 border-t border-black/5 dark:border-white/10">
             <Button variant="secondary" size="sm" onClick={() => setShowModal(false)}>
               Cancel
             </Button>

@@ -450,7 +450,7 @@ const Review = () => {
                 <span>•</span>
                 <span>{doc.pageCount || pages.length || 1} page(s)</span>
                 <span>•</span>
-                <span>Overall Confidence: <strong className="text-slate-800 dark:text-slate-100">{overallConfidence}%</strong></span>
+                <span>Overall Confidence: <strong className="text-[#1C1C1E] dark:text-[#F2F2F7]">{overallConfidence}%</strong></span>
               </div>
             </div>
           </div>
@@ -656,17 +656,17 @@ const Review = () => {
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-1.5">
                             {isTable ? (
-                              <TableIcon className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                              <TableIcon className="h-3.5 w-3.5 text-[#5856D6] shrink-0" />
                             ) : isList ? (
-                              <ListIcon className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                              <ListIcon className="h-3.5 w-3.5 text-[#34C759] shrink-0" />
                             ) : (
-                              <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              <FileText className="h-3.5 w-3.5 text-[#8E8E93] shrink-0" />
                             )}
-                            <label className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            <label className="text-xs font-semibold text-[#1C1C1E] dark:text-[#F2F2F7]">
                               {field.label || field.key}
                             </label>
                             {field.edited && (
-                              <span className="text-[9px] px-1 rounded bg-indigo-50 text-indigo-600 font-medium">
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-[4px] bg-[#007AFF]/10 text-[#007AFF] font-medium">
                                 Edited
                               </span>
                             )}
@@ -680,9 +680,9 @@ const Review = () => {
                         {isTable ? (
                           <div className="space-y-2 mt-2">
                             {Array.isArray(field.value) && field.value.length > 0 ? (
-                              <div className="overflow-x-auto border border-slate-200 rounded-lg max-h-48">
+                              <div className="overflow-x-auto border border-black/[0.05] dark:border-white/[0.08] rounded-[10px] max-h-48">
                                 <table className="w-full text-[11px] text-left border-collapse">
-                                  <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold sticky top-0">
+                                  <thead className="bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#8E8E93] font-semibold sticky top-0">
                                     <tr>
                                       {Object.keys(field.value[0] || {}).map((colKey) => {
                                         const isWide = ['name', 'description', 'test_name', 'item'].includes(colKey.toLowerCase());
@@ -690,7 +690,7 @@ const Review = () => {
                                         return (
                                           <th
                                             key={colKey}
-                                            className={`p-1.5 border-b border-slate-200 uppercase font-mono text-[10px] ${
+                                            className={`p-1.5 border-b border-black/[0.05] dark:border-white/[0.08] uppercase font-mono text-[10px] ${
                                               isWide ? 'min-w-[150px]' : isNarrow ? 'w-16 min-w-[54px]' : 'min-w-[80px]'
                                             }`}
                                           >
@@ -698,12 +698,12 @@ const Review = () => {
                                           </th>
                                         );
                                       })}
-                                      {canReview && <th className="p-1.5 border-b border-slate-200 w-8"></th>}
+                                      {canReview && <th className="p-1.5 border-b border-black/[0.05] dark:border-white/[0.08] w-8"></th>}
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {field.value.map((row, rIdx) => (
-                                      <tr key={rIdx} className="border-b border-slate-100 hover:bg-slate-50/50">
+                                      <tr key={rIdx} className="border-b border-black/[0.04] dark:border-white/[0.06] hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                                         {Object.keys(field.value[0] || {}).map((colKey) => {
                                           const isWide = ['name', 'description', 'test_name', 'item'].includes(colKey.toLowerCase());
                                           const isNarrow = ['code', 'theory', 'practical', 'marks', 'grade', 'unit', 'flag'].includes(colKey.toLowerCase());
@@ -719,7 +719,7 @@ const Review = () => {
                                                 onChange={(e) =>
                                                   handleTableCellChange(field.key, rIdx, colKey, e.target.value)
                                                 }
-                                                className="w-full px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 text-[11px] outline-none focus:ring-1 focus:ring-indigo-500"
+                                                className="w-full px-1.5 py-0.5 rounded bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] text-[11px] outline-none focus:ring-1 focus:ring-[#007AFF] text-[#1C1C1E] dark:text-[#F2F2F7]"
                                               />
                                             </td>
                                           );
@@ -729,7 +729,7 @@ const Review = () => {
                                             <button
                                               type="button"
                                               onClick={() => handleRemoveTableRow(field.key, rIdx)}
-                                              className="text-slate-400 hover:text-rose-600 p-0.5"
+                                              className="text-[#8E8E93] hover:text-[#FF3B30] p-0.5 active:scale-[0.97] cursor-pointer"
                                             >
                                               <Trash2 className="h-3 w-3" />
                                             </button>
@@ -741,14 +741,14 @@ const Review = () => {
                                 </table>
                               </div>
                             ) : (
-                              <p className="text-[11px] text-slate-400 italic">No table rows extracted.</p>
+                              <p className="text-[11px] text-[#8E8E93] italic">No table rows extracted.</p>
                             )}
 
                             {canReview && (
                               <button
                                 type="button"
                                 onClick={() => handleAddTableRow(field.key)}
-                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800"
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#007AFF] hover:opacity-80 active:scale-[0.97] cursor-pointer"
                               >
                                 <Plus className="h-3 w-3" /> Add Table Row
                               </button>
@@ -765,13 +765,13 @@ const Review = () => {
                                     disabled={!canReview}
                                     value={item}
                                     onChange={(e) => handleListItemChange(field.key, iIdx, e.target.value)}
-                                    className="flex-1 px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white dark:bg-[#2C2C2E] outline-none focus:ring-1 focus:ring-[#007AFF]"
+                                    className="flex-1 px-2.5 py-1 text-xs rounded-[8px] border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#2C2C2E] outline-none focus:ring-1 focus:ring-[#007AFF] text-[#1C1C1E] dark:text-[#F2F2F7]"
                                   />
                                   {canReview && (
                                     <button
                                       type="button"
                                       onClick={() => handleRemoveListItem(field.key, iIdx)}
-                                      className="text-slate-400 hover:text-rose-600 p-1"
+                                      className="text-[#8E8E93] hover:text-[#FF3B30] p-1 active:scale-[0.97] cursor-pointer"
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </button>
@@ -779,7 +779,7 @@ const Review = () => {
                                 </div>
                               ))
                             ) : (
-                              <p className="text-[11px] text-slate-400 italic">No items.</p>
+                              <p className="text-[11px] text-[#8E8E93] italic">No items.</p>
                             )}
                             {canReview && (
                               <button
@@ -873,13 +873,13 @@ const Review = () => {
       {activeTab === 'summary' && (
         <Card className="p-6 space-y-6">
           {/* Summary Mode Controls & Actions */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-white/10">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-black/[0.05] dark:border-white/10">
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-base font-bold text-[#1C1C1E] dark:text-[#F2F2F7] flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-[#007AFF]" />
                 AI Document Summary
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[#6B7280]">
                 Synthesized by Llama 3.2 grounded in verified metadata extractions
               </p>
             </div>
@@ -946,17 +946,17 @@ const Review = () => {
                     fetchSummary(fmt.id);
                   }}
                   disabled={summaryLoading}
-                  className={`p-3 text-left rounded-xl border transition-all text-xs ${
+                  className={`p-3 text-left rounded-[14px] border transition-all text-xs cursor-pointer ${
                     isActive
-                      ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-600 shadow-sm'
-                      : 'bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/10 hover:border-slate-300'
+                      ? 'bg-[#007AFF]/10 dark:bg-[#007AFF]/15 border-[#007AFF]/40 shadow-xs'
+                      : 'bg-white dark:bg-white/[0.02] border-black/5 dark:border-white/10 hover:border-black/15'
                   }`}
                 >
-                  <div className="font-semibold text-slate-900 dark:text-white flex items-center justify-between mb-1">
+                  <div className="font-semibold text-[#1C1C1E] dark:text-[#F2F2F7] flex items-center justify-between mb-1">
                     <span>{fmt.label}</span>
-                    {isActive && <span className="h-2 w-2 rounded-full bg-indigo-600 dark:bg-indigo-400" />}
+                    {isActive && <span className="h-2 w-2 rounded-full bg-[#007AFF]" />}
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  <p className="text-[11px] text-[#6B7280] dark:text-[#8E8E93] leading-relaxed">
                     {fmt.desc}
                   </p>
                 </button>
@@ -966,9 +966,9 @@ const Review = () => {
 
           {/* Meta Info Bar */}
           {summaryMeta && (
-            <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-white/[0.02] px-3.5 py-2 rounded-lg border border-slate-100 dark:border-white/5">
+            <div className="flex items-center justify-between text-[11px] text-[#8E8E93] bg-[#F2F2F7] dark:bg-[#2C2C2E] px-3.5 py-2 rounded-[10px] border border-black/[0.04] dark:border-white/5">
               <span>
-                Format: <strong className="text-slate-700 dark:text-slate-300 capitalize">{summaryFormat}</strong>
+                Format: <strong className="text-[#1C1C1E] dark:text-[#F2F2F7] capitalize">{summaryFormat}</strong>
               </span>
               <span>
                 {summaryMeta.fromCache ? '⚡ Instant (Cached)' : '✨ Newly Generated'}
@@ -982,17 +982,17 @@ const Review = () => {
           {/* Content Area */}
           {summaryLoading ? (
             <div className="py-16 text-center space-y-3">
-              <RefreshCw className="h-8 w-8 text-indigo-600 animate-spin mx-auto" />
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              <RefreshCw className="h-8 w-8 text-[#007AFF] animate-spin mx-auto" />
+              <p className="text-sm font-medium text-[#1C1C1E] dark:text-[#F2F2F7]">
                 Generating {summaryFormat} summary with Llama 3.2...
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#8E8E93]">
                 Analyzing verified metadata and page contents
               </p>
             </div>
           ) : (
-            <div className="bg-slate-50/50 dark:bg-black/20 rounded-xl p-5 border border-slate-100 dark:border-white/5">
-              <div className="prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-sans text-xs sm:text-sm">
+            <div className="bg-[#F2F2F7]/50 dark:bg-[#2C2C2E]/40 rounded-[14px] p-5 border border-black/[0.04] dark:border-white/5">
+              <div className="prose prose-sm dark:prose-invert max-w-none text-[#1C1C1E] dark:text-[#F2F2F7] leading-relaxed whitespace-pre-wrap font-sans text-xs sm:text-sm">
                 {summaryText}
               </div>
             </div>
@@ -1006,23 +1006,23 @@ const Review = () => {
           {/* Chat Header */}
           <div className="p-3.5 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/10 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+              <div className="p-1 rounded-[8px] bg-[#007AFF]/12 text-[#007AFF]">
                 <Bot className="h-4 w-4" />
               </div>
               <div>
-                <span className="font-bold text-slate-900 dark:text-white">
+                <span className="font-bold text-[#1C1C1E] dark:text-[#F2F2F7]">
                   Chat with {doc?.originalName || 'Document'}
                 </span>
-                <span className="ml-2 text-[10px] text-slate-400 font-normal">
-                  RAG scoped to this document
+                <span className="ml-2 text-[10px] text-[#8E8E93] font-normal">
+                  Grounded in this document
                 </span>
               </div>
             </div>
 
             <button
               onClick={handleResetDocChat}
-              title="Reset Chat"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 transition-colors"
+              title="Reset Conversation"
+              className="p-1.5 rounded-[8px] text-[#8E8E93] hover:text-[#1C1C1E] dark:hover:text-[#F2F2F7] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               <RotateCcw className="h-3.5 w-3.5" />
             </button>
@@ -1036,27 +1036,27 @@ const Review = () => {
                 className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.role === 'assistant' && (
-                  <div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm text-xs">
+                  <div className="h-7 w-7 rounded-[8px] bg-[#007AFF] flex items-center justify-center text-white shrink-0 mt-0.5 shadow-xs text-xs">
                     <Bot className="h-3.5 w-3.5" />
                   </div>
                 )}
 
                 <div
-                  className={`max-w-xl rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${
+                  className={`max-w-xl px-4 py-2.5 text-xs leading-relaxed shadow-xs ${
                     msg.role === 'user'
-                      ? 'bg-indigo-600 text-white rounded-br-none'
+                      ? 'bg-[#007AFF] text-white rounded-[18px] rounded-br-[4px]'
                       : msg.isError
-                      ? 'bg-rose-50 border border-rose-200 text-rose-800 rounded-bl-none dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300'
-                      : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none'
+                      ? 'bg-[#FF3B30]/10 border border-[#FF3B30]/20 text-[#FF3B30] rounded-[18px] rounded-bl-[4px]'
+                      : 'bg-white dark:bg-[#2C2C2E] border border-black/[0.05] dark:border-white/[0.08] text-[#1C1C1E] dark:text-[#F2F2F7] rounded-[18px] rounded-bl-[4px]'
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
 
                   {/* Sources / Citations */}
                   {msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
-                      <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                        <Sparkles className="h-2.5 w-2.5 text-indigo-500" />
+                    <div className="mt-2.5 pt-2 border-t border-black/5 dark:border-white/10 space-y-1.5">
+                      <div className="text-[10px] font-semibold text-[#8E8E93] uppercase tracking-wider flex items-center gap-1">
+                        <Sparkles className="h-2.5 w-2.5 text-[#007AFF]" />
                         Cited Sources ({msg.sources.length})
                       </div>
                       {msg.sources.map((src, srcIdx) => {
@@ -1064,21 +1064,21 @@ const Review = () => {
                         return (
                           <div
                             key={srcIdx}
-                            className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-lg p-2 text-[11px]"
+                            className="bg-[#F2F2F7] dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 rounded-[10px] p-2 text-[11px]"
                           >
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                              <span className="font-bold text-[#007AFF]">
                                 [{src.citationIndex}] Page {src.pageNumber}
                               </span>
                               <button
                                 onClick={() => toggleDocSourceSnippet(msgIdx, srcIdx)}
-                                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5"
+                                className="text-[#8E8E93] hover:text-[#1C1C1E] dark:hover:text-[#F2F2F7] p-0.5 cursor-pointer"
                               >
                                 {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                               </button>
                             </div>
                             {isExpanded && (
-                              <p className="mt-1 pt-1 border-t border-slate-200 dark:border-slate-700 font-mono text-[10px] text-slate-600 dark:text-slate-300 bg-white dark:bg-black/30 p-1.5 rounded">
+                              <p className="mt-1 pt-1 border-t border-black/5 dark:border-white/10 font-mono text-[10px] text-[#1C1C1E] dark:text-[#F2F2F7] bg-white dark:bg-black/40 p-1.5 rounded-[6px]">
                                 "{src.snippet}"
                               </p>
                             )}
@@ -1092,15 +1092,15 @@ const Review = () => {
             ))}
 
             {docChatLoading && (
-              <div className="flex gap-3 justify-start items-center text-xs text-slate-400">
-                <div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shrink-0">
+              <div className="flex gap-3 justify-start items-center text-xs text-[#8E8E93]">
+                <div className="h-7 w-7 rounded-[8px] bg-[#007AFF] flex items-center justify-center text-white shrink-0">
                   <Bot className="h-3.5 w-3.5" />
                 </div>
-                <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-2xl rounded-bl-none shadow-sm">
-                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" />
-                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.4s]" />
-                  <span className="ml-1 text-[11px] text-slate-500 font-medium">Searching & answering...</span>
+                <div className="flex items-center gap-1.5 bg-white dark:bg-[#2C2C2E] border border-black/[0.05] dark:border-white/[0.08] px-3.5 py-2 rounded-[18px] rounded-bl-[4px] shadow-xs">
+                  <span className="w-1.5 h-1.5 bg-[#007AFF] rounded-full animate-bounce" />
+                  <span className="w-1.5 h-1.5 bg-[#007AFF] rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <span className="w-1.5 h-1.5 bg-[#007AFF] rounded-full animate-bounce [animation-delay:0.4s]" />
+                  <span className="ml-1 text-[11px] text-[#8E8E93] font-medium">Analyzing document...</span>
                 </div>
               </div>
             )}
@@ -1109,8 +1109,8 @@ const Review = () => {
           </div>
 
           {/* Quick Prompts */}
-          <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto text-[11px]">
-            <span className="text-slate-400 font-medium shrink-0">Ask:</span>
+          <div className="px-4 py-2 bg-black/[0.02] dark:bg-white/[0.02] border-t border-black/5 dark:border-white/10 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+            <span className="text-[#8E8E93] font-medium shrink-0">Ask:</span>
             {[
               'What is the total marks and result?',
               'List all subjects and grades',
@@ -1122,24 +1122,24 @@ const Review = () => {
                 onClick={() => {
                   setDocChatInput(p);
                 }}
-                className="px-2.5 py-0.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 transition-colors shrink-0"
+                className="px-2.5 py-1 rounded-full bg-white dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 text-[#6B7280] dark:text-[#8E8E93] hover:text-[#007AFF] hover:border-[#007AFF]/30 transition-all shrink-0 cursor-pointer active:scale-95"
               >
                 {p}
               </button>
             ))}
           </div>
 
-          {/* Chat Input Bar */}
+          {/* Chat Input Bar (Controlled Glassmorphism) */}
           <form
             onSubmit={handleSendDocChat}
-            className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2"
+            className="p-3 bg-white dark:bg-[#1C1C1E] border-t border-black/5 dark:border-white/10 flex items-center gap-2"
           >
             <input
               type="text"
               value={docChatInput}
               onChange={(e) => setDocChatInput(e.target.value)}
               placeholder="Ask a question about this document..."
-              className="flex-1 px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
+              className="flex-1 px-3.5 py-2 text-xs rounded-[12px] bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 focus:outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 text-[#1C1C1E] dark:text-[#F2F2F7] transition-all"
             />
             <Button
               type="submit"
@@ -1162,7 +1162,7 @@ const Review = () => {
           title="Change Document Type"
         >
           <div className="space-y-4">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[#6B7280]">
               Select a target template. The document will be reprocessed and extracted against the new schema.
             </p>
 
@@ -1176,7 +1176,7 @@ const Review = () => {
               ]}
             />
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-black/[0.05] dark:border-white/10">
               <Button variant="secondary" size="sm" onClick={() => setShowTypeModal(false)}>
                 Cancel
               </Button>

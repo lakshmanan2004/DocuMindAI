@@ -1,62 +1,119 @@
 :root {
+  /* Apple iOS Light Palette */
   --bg: #F2F2F7;
   --surface: #FFFFFF;
+  --surface-secondary: #E5E5EA;
+  --surface-tertiary: #D1D1D6;
   --text: #1C1C1E;
-  --muted: #6B7280;
+  --text-secondary: #6B7280;
+  --text-tertiary: #8E8E93;
   --accent: #007AFF;
+  --accent-hover: #0062CC;
+  --accent-subtle: rgba(0, 122, 255, 0.08);
   --success: #34C759;
+  --success-subtle: rgba(52, 199, 89, 0.12);
   --warning: #FF9500;
+  --warning-subtle: rgba(255, 149, 0, 0.12);
   --danger: #FF3B30;
-  --glass-bg: rgb(255 255 255 / 0.62);
-  --glass-border: rgb(255 255 255 / 0.5);
-  --shadow: 0 8px 30px rgb(0 0 0 / 0.08);
+  --danger-subtle: rgba(255, 59, 48, 0.12);
+  --indigo: #5856D6;
+  --indigo-subtle: rgba(88, 86, 214, 0.12);
+
+  /* Glassmorphism Specs (Controlled) */
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-blur: blur(16px) saturate(160%);
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.08);
+
+  /* Radii */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
   --radius-card: 20px;
-  --radius-control: 12px;
   --radius-modal: 24px;
-  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+  --radius-full: 9999px;
+
+  /* Timing & Easing */
+  --ease-ios: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-micro: 150ms;
+  --duration-std: 200ms;
 }
 
 .dark {
+  /* Apple iOS Dark Palette (True Black) */
   --bg: #000000;
   --surface: #1C1C1E;
+  --surface-secondary: #2C2C2E;
+  --surface-tertiary: #3A3A3C;
   --text: #F2F2F7;
-  --glass-bg: rgb(28 28 30 / 0.6);
-  --glass-border: rgb(255 255 255 / 0.08);
+  --text-secondary: #8E8E93;
+  --text-tertiary: #636366;
+  --accent: #0A84FF;
+  --accent-hover: #409CFF;
+  --accent-subtle: rgba(10, 132, 255, 0.15);
+  --success: #30D158;
+  --success-subtle: rgba(48, 209, 88, 0.15);
+  --warning: #FF9F0A;
+  --warning-subtle: rgba(255, 159, 10, 0.15);
+  --danger: #FF453A;
+  --danger-subtle: rgba(255, 69, 58, 0.15);
+  --indigo: #5E5CE6;
+  --indigo-subtle: rgba(94, 92, 230, 0.15);
+
+  --glass-bg: rgba(28, 28, 30, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
 
+/* Glassmorphism Class (Applied exclusively to navbar, modals, sheets, dropdowns, toast) */
 .glass {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .card {
   background: var(--surface);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-sm);
 }
 
-/* Lite mode and reduced transparency: solid, no blur */
+/* Automatic & Toggleable Lite Mode: Zero blur, solid backgrounds for 60fps performance */
+body.lite-mode .glass,
 .lite .glass {
-  background: var(--surface);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: var(--surface) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .glass {
-    background: var(--surface);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    background: var(--surface) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
-

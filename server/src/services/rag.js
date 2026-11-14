@@ -327,7 +327,7 @@ STRICT INSTRUCTIONS:
    - In OCR text, the Indian Rupee symbol '₹' is frequently misread as '3' or 'R' (for example, '31,499.00' means ₹1,499.00). Use the verified amount from [VERIFIED METADATA].
    - Never quote discounts, shipping charges, or zero amounts (0.00) as the product's price.
 4. MARKSHEETS: In educational certificates, Total Marks is the marks OBTAINED by the student, not the maximum possible marks. Use the 'marks_summary', 'maximum_total_marks', and 'percentage' from [VERIFIED METADATA] to answer questions about marks and percentages.
-5. CITATIONS: Be concise, direct, and cite the source using bracket notation like [1]. Do NOT write a bibliography or list of documents at the end of your response; citations inside brackets [1] are sufficient.
+5. CITATIONS: Answer directly and naturally in a clear, professional tone (e.g. "The price of ... is ₹808.58 [1]"). Do NOT repeat robotic prefixes like "According to [1] Document: ...". Cite the source inline using bracket notation like [1]. Never output a bibliography, citation list, or metadata dump at the end.
 6. FALLBACK: If the answer cannot be found in the provided context, respond EXACTLY:
 "I could not find this in your documents."`;
 
@@ -439,9 +439,10 @@ Answer concisely with citations.`;
       }
     }
 
-    // Strip trailing bibliography lines like "\n\n[1] Document: ..." or "\n\n[1] Page 1"
+    // Strip trailing bibliography lines like "\n\n[1] Document: ...", "\n\n[1] [VERIFIED METADATA...", or "[1] Page 1"
     answerText = answerText
-      .replace(/\n+\s*\[\d+\]\s*(Document:|\w+\.\w+|Page\s+\d+)[^\n]*/gi, '')
+      .replace(/\n+\s*\[\d+\]\s*(?:\[VERIFIED METADATA[^\]]*\]|Document:|\w+\.\w+|Page\s+\d+|Source:)[^\n]*/gi, '')
+      .replace(/\n+\s*\[\d+\]\s*:[^\n]*/gi, '')
       .replace(/\n+\s*Citations?:?\s*$/i, '')
       .trim();
 

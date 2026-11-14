@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Sparkles
 } from 'lucide-react';
+import { Button, Card, StatusBadge } from '../ui';
 
 const RULE_TYPES = [
   { value: 'required', label: 'Field Required' },
@@ -295,10 +296,11 @@ const Templates = () => {
       {/* Top Banner / Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-[#1C1C1E] dark:text-[#F2F2F7] tracking-tight flex items-center gap-2">
+            <Layers className="h-6 w-6 text-[#007AFF]" />
             Extraction Templates & Schemas
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-[#6B7280] mt-1">
             Build and test document schemas. Core engine is document-type agnostic with validation rules.
           </p>
         </div>
@@ -309,7 +311,7 @@ const Templates = () => {
               resetBuilder();
               setShowBuilder(true);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#007AFF] hover:opacity-90 text-white text-xs sm:text-sm font-semibold rounded-[12px] shadow-xs active:scale-[0.97] transition-all cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Build Template
@@ -318,14 +320,14 @@ const Templates = () => {
       </div>
 
       {successMsg && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center gap-2.5">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+        <div className="p-3.5 rounded-[14px] bg-[#34C759]/10 border border-[#34C759]/20 text-[#34C759] text-sm flex items-center gap-2.5">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center gap-3">
+        <div className="p-4 rounded-[14px] bg-[#FF3B30]/10 border border-[#FF3B30]/20 text-[#FF3B30] text-sm flex items-center gap-3">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{error}</span>
         </div>
@@ -333,33 +335,33 @@ const Templates = () => {
 
       {/* Templates Grid */}
       {loading ? (
-        <div className="py-20 flex flex-col items-center justify-center text-slate-400">
-          <RefreshCw className="h-8 w-8 animate-spin text-indigo-500 mb-3" />
+        <div className="py-20 flex flex-col items-center justify-center text-[#8E8E93]">
+          <RefreshCw className="h-7 w-7 animate-spin text-[#007AFF] mb-3" />
           <p className="text-sm">Loading schemas and rules...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {templates.map((tpl) => (
             <div
               key={tpl._id}
-              className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-[#1C1C1E] rounded-[20px] border border-black/[0.05] dark:border-white/[0.08] shadow-xs p-5 flex flex-col justify-between hover:border-black/[0.1] dark:hover:border-white/[0.15] transition-all"
             >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                    <div className="h-9 w-9 rounded-[12px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center font-bold">
                       <Layers className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <h3 className="font-bold text-[#1C1C1E] dark:text-[#F2F2F7] text-sm flex items-center gap-2">
                         {tpl.name}
                         {tpl.isBuiltIn && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium border border-slate-200">
+                          <span className="px-1.5 py-0.5 rounded-[6px] bg-black/[0.04] dark:bg-white/[0.06] text-[#8E8E93] text-[10px] font-medium border border-black/[0.04] dark:border-white/[0.06]">
                             Built-in
                           </span>
                         )}
                       </h3>
-                      <p className="text-xs text-slate-500 line-clamp-1">
+                      <p className="text-xs text-[#6B7280] line-clamp-1">
                         {tpl.description || 'No description provided'}
                       </p>
                     </div>
@@ -367,24 +369,24 @@ const Templates = () => {
                 </div>
 
                 {/* Counts / Stats */}
-                <div className="grid grid-cols-3 gap-2 my-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                <div className="grid grid-cols-3 gap-2 my-3 p-2.5 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[12px] border border-black/[0.04] dark:border-white/[0.06] text-center">
                   <div>
-                    <span className="block text-xs font-bold text-slate-800">
+                    <span className="block text-xs font-bold text-[#1C1C1E] dark:text-[#F2F2F7]">
                       {tpl.fieldsCount ?? tpl.fields?.length ?? 0}
                     </span>
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">Fields</span>
+                    <span className="text-[10px] text-[#8E8E93] uppercase tracking-wider">Fields</span>
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-slate-800">
+                    <span className="block text-xs font-bold text-[#1C1C1E] dark:text-[#F2F2F7]">
                       {tpl.rulesCount ?? tpl.rules?.length ?? 0}
                     </span>
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">Rules</span>
+                    <span className="text-[10px] text-[#8E8E93] uppercase tracking-wider">Rules</span>
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-indigo-600">
+                    <span className="block text-xs font-bold text-[#007AFF]">
                       {tpl.documentCount ?? 0}
                     </span>
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">Docs</span>
+                    <span className="text-[10px] text-[#8E8E93] uppercase tracking-wider">Docs</span>
                   </div>
                 </div>
 
@@ -394,13 +396,13 @@ const Templates = () => {
                     {tpl.keywords.slice(0, 3).map((kw, i) => (
                       <span
                         key={i}
-                        className="px-2 py-0.5 rounded-md bg-indigo-50/60 text-indigo-700 text-[10px] font-medium"
+                        className="px-2 py-0.5 rounded-[6px] bg-[#007AFF]/10 text-[#007AFF] text-[10px] font-medium"
                       >
                         {kw}
                       </span>
                     ))}
                     {tpl.keywords.length > 3 && (
-                      <span className="text-[10px] text-slate-400 self-center">
+                      <span className="text-[10px] text-[#8E8E93] self-center">
                         +{tpl.keywords.length - 3} more
                       </span>
                     )}
@@ -408,28 +410,28 @@ const Templates = () => {
                 )}
 
                 {/* Fields Preview List */}
-                <div className="space-y-1.5 pt-2 border-t border-slate-100 max-h-36 overflow-y-auto">
+                <div className="space-y-1.5 pt-2 border-t border-black/[0.04] dark:border-white/[0.06] max-h-36 overflow-y-auto">
                   {tpl.fields?.map((f) => (
                     <div
                       key={f.key}
-                      className="flex items-center justify-between text-xs py-1 px-2.5 rounded-lg bg-slate-50/70 border border-slate-200/50"
+                      className="flex items-center justify-between text-xs py-1 px-2.5 rounded-[8px] bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/[0.04] dark:border-white/[0.06]"
                     >
                       <div className="flex items-center gap-1.5 truncate">
                         {f.type === 'table' ? (
-                          <TableIcon className="h-3 w-3 text-indigo-500 shrink-0" />
+                          <TableIcon className="h-3 w-3 text-[#5856D6] shrink-0" />
                         ) : f.type === 'list' ? (
-                          <ListIcon className="h-3 w-3 text-emerald-500 shrink-0" />
+                          <ListIcon className="h-3 w-3 text-[#34C759] shrink-0" />
                         ) : (
-                          <FileCode className="h-3 w-3 text-slate-400 shrink-0" />
+                          <FileCode className="h-3 w-3 text-[#8E8E93] shrink-0" />
                         )}
-                        <span className="font-medium text-slate-700 truncate">{f.label}</span>
+                        <span className="font-medium text-[#1C1C1E] dark:text-[#F2F2F7] truncate">{f.label}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="px-1.5 py-0.2 rounded bg-white border border-slate-200 text-slate-500 text-[9px] font-mono uppercase">
+                        <span className="px-1.5 py-0.2 rounded bg-white dark:bg-[#1C1C1E] border border-black/[0.05] dark:border-white/[0.08] text-[#8E8E93] text-[9px] font-mono uppercase">
                           {f.type}
                         </span>
                         {f.required && (
-                          <span className="text-[9px] font-bold text-amber-600">*</span>
+                          <span className="text-[9px] font-bold text-[#FF9500]">*</span>
                         )}
                       </div>
                     </div>
@@ -438,41 +440,32 @@ const Templates = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-between gap-2 pt-4 mt-3 border-t border-slate-100">
+              <div className="flex items-center justify-between gap-2 pt-4 mt-3 border-t border-black/[0.04] dark:border-white/[0.06]">
                 <button
                   onClick={() => openTestBox(tpl)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F2F2F7] dark:bg-[#2C2C2E] hover:bg-[#007AFF]/10 hover:text-[#007AFF] text-[#1C1C1E] dark:text-[#F2F2F7] rounded-[10px] text-xs font-semibold transition-all active:scale-[0.97] cursor-pointer"
                 >
                   <Play className="h-3 w-3 fill-current" />
                   Test Sandbox
                 </button>
 
                 <div className="flex items-center gap-1">
-                  {user?.role === 'admin' && (
-                    <>
-                      <button
-                        onClick={() => handleDuplicate(tpl._id, tpl.name)}
-                        title="Duplicate template"
-                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(tpl._id, tpl.name)}
-                        title={
-                          tpl.documentCount > 0
-                            ? 'Cannot delete: in use by documents'
-                            : 'Delete template'
-                        }
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                          tpl.documentCount > 0
-                            ? 'text-slate-300 hover:text-slate-400'
-                            : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
-                        }`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </>
+                  <button
+                    onClick={() => handleDuplicate(tpl._id, tpl.name)}
+                    title="Duplicate template"
+                    className="p-1.5 text-[#8E8E93] hover:text-[#007AFF] rounded-[8px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors active:scale-[0.97] cursor-pointer"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+
+                  {!tpl.isBuiltIn && user?.role === 'admin' && (
+                    <button
+                      onClick={() => handleDelete(tpl._id, tpl.name)}
+                      title="Delete template"
+                      className="p-1.5 text-[#8E8E93] hover:text-[#FF3B30] rounded-[8px] hover:bg-[#FF3B30]/10 transition-colors active:scale-[0.97] cursor-pointer"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   )}
                 </div>
               </div>
@@ -483,26 +476,26 @@ const Templates = () => {
 
       {/* Test Sandbox Drawer / Modal */}
       {showTestModal && testTemplate && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col border border-slate-200">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass bg-white/95 dark:bg-[#1C1C1E]/95 rounded-[24px] shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col border border-black/[0.08] dark:border-white/[0.1] overflow-hidden">
             {/* Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+            <div className="p-5 border-b border-black/[0.05] dark:border-white/[0.08] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                <div className="h-9 w-9 rounded-[12px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center font-bold">
                   <Play className="h-4 w-4 fill-current" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <h3 className="font-bold text-[#1C1C1E] dark:text-[#F2F2F7] text-base flex items-center gap-2">
                     Test Box: {testTemplate.name}
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-[#6B7280]">
                     Paste raw text to test field extraction and rules validation without persisting anything.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowTestModal(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                className="p-1.5 text-[#8E8E93] hover:text-[#1C1C1E] dark:hover:text-[#F2F2F7] rounded-[8px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-[0.97] cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -511,14 +504,14 @@ const Templates = () => {
             {/* Body */}
             <div className="p-6 overflow-y-auto space-y-5 flex-1">
               {testError && (
-                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+                <div className="p-3.5 rounded-[12px] bg-[#FF3B30]/10 border border-[#FF3B30]/20 text-[#FF3B30] text-xs font-medium flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{testError}</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1.5">
                   Paste Sample Document Text
                 </label>
                 <textarea
@@ -526,18 +519,18 @@ const Templates = () => {
                   value={sampleText}
                   onChange={(e) => setSampleText(e.target.value)}
                   placeholder="Paste invoice text, marksheet transcript, lab report or contract clauses..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white text-slate-900"
+                  className="w-full px-3.5 py-2.5 bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/[0.06] dark:border-white/[0.08] rounded-[12px] text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#007AFF] text-[#1C1C1E] dark:text-[#F2F2F7]"
                 />
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-[#8E8E93]">
                   {testTemplate.fields?.length || 0} fields &bull; {testTemplate.rules?.length || 0} validation rules
                 </span>
                 <button
                   onClick={handleRunTest}
                   disabled={testing || !sampleText.trim()}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#007AFF] hover:opacity-90 disabled:opacity-50 text-white text-xs font-semibold rounded-[12px] shadow-xs active:scale-[0.97] transition-all cursor-pointer"
                 >
                   {testing ? (
                     <>
@@ -555,16 +548,16 @@ const Templates = () => {
 
               {/* Results View */}
               {testResult && (
-                <div className="space-y-4 pt-4 border-t border-slate-100">
+                <div className="space-y-4 pt-4 border-t border-black/[0.05] dark:border-white/[0.08]">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                    <h4 className="font-bold text-[#1C1C1E] dark:text-[#F2F2F7] text-xs uppercase tracking-wider">
                       Extraction Results & Validation
                     </h4>
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                         testResult.valid
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          ? 'bg-[#34C759]/10 text-[#34C759] border border-[#34C759]/20'
+                          : 'bg-[#FF3B30]/10 text-[#FF3B30] border border-[#FF3B30]/20'
                       }`}
                     >
                       {testResult.valid ? 'Passed All Rules' : 'Validation Issues Detected'}
@@ -577,19 +570,19 @@ const Templates = () => {
                       {testResult.validationIssues.map((issue, idx) => (
                         <div
                           key={idx}
-                          className={`p-2.5 rounded-lg border text-xs flex items-center gap-2.5 ${
+                          className={`p-2.5 rounded-[10px] border text-xs flex items-center gap-2.5 ${
                             issue.severity === 'error'
-                              ? 'bg-rose-50/70 border-rose-200 text-rose-800'
-                              : 'bg-amber-50/70 border-amber-200 text-amber-800'
+                              ? 'bg-[#FF3B30]/10 border-[#FF3B30]/20 text-[#FF3B30]'
+                              : 'bg-[#FF9500]/10 border-[#FF9500]/20 text-[#FF9500]'
                           }`}
                         >
                           {issue.severity === 'error' ? (
-                            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                            <AlertCircle className="h-4 w-4 text-[#FF3B30] shrink-0" />
                           ) : (
-                            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                            <AlertTriangle className="h-4 w-4 text-[#FF9500] shrink-0" />
                           )}
                           <div className="flex-1">
-                            <span className="font-semibold uppercase text-[10px] mr-1.5 px-1 rounded bg-white/70">
+                            <span className="font-semibold uppercase text-[10px] mr-1.5 px-1 rounded bg-black/[0.04] dark:bg-white/[0.06]">
                               {issue.rule}
                             </span>
                             <span>{issue.message}</span>
@@ -599,26 +592,37 @@ const Templates = () => {
                     </div>
                   )}
 
-                  {/* JSON Preview */}
-                  <div>
-                    <span className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      Extracted JSON Data:
-                    </span>
-                    <pre className="p-3.5 bg-slate-900 text-slate-100 rounded-xl text-xs font-mono overflow-x-auto max-h-60">
-                      {JSON.stringify(testResult.extracted, null, 2)}
-                    </pre>
+                  {/* Extracted Fields Table */}
+                  <div className="border border-black/[0.05] dark:border-white/[0.08] rounded-[14px] overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#F2F2F7] dark:bg-[#2C2C2E] border-b border-black/[0.05] dark:border-white/[0.08] text-[#8E8E93] font-semibold uppercase">
+                        <tr>
+                          <th className="px-3.5 py-2">Field Label</th>
+                          <th className="px-3.5 py-2">Key</th>
+                          <th className="px-3.5 py-2">Extracted Value</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-black/[0.04] dark:divide-white/[0.06]">
+                        {testResult.fields?.map((f, i) => (
+                          <tr key={i} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+                            <td className="px-3.5 py-2 font-medium text-[#1C1C1E] dark:text-[#F2F2F7]">{f.label}</td>
+                            <td className="px-3.5 py-2 font-mono text-[#8E8E93]">{f.key}</td>
+                            <td className="px-3.5 py-2 text-[#1C1C1E] dark:text-[#F2F2F7]">
+                              {typeof f.value === 'object' && f.value !== null ? (
+                                <pre className="font-mono text-[10px] bg-black/[0.03] dark:bg-white/[0.06] p-1 rounded">
+                                  {JSON.stringify(f.value, null, 2)}
+                                </pre>
+                              ) : (
+                                String(f.value ?? '—')
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
-            </div>
-
-            <div className="p-4 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl flex justify-end">
-              <button
-                onClick={() => setShowTestModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200/60 rounded-xl"
-              >
-                Close Sandbox
-              </button>
             </div>
           </div>
         </div>
@@ -626,19 +630,25 @@ const Templates = () => {
 
       {/* Builder Modal */}
       {showBuilder && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col border border-slate-200">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass bg-white/95 dark:bg-[#1C1C1E]/95 rounded-[24px] shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col border border-black/[0.08] dark:border-white/[0.1] overflow-hidden">
             {/* Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-900 text-lg">Build Custom Template</h3>
-                <p className="text-xs text-slate-500">
-                  Define fields (scalars, lists, tables) and generic validation rules.
-                </p>
+            <div className="p-5 border-b border-black/[0.05] dark:border-white/[0.08] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-[12px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center font-bold">
+                  <Plus className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[#1C1C1E] dark:text-[#F2F2F7] text-base">Create Schema Template</h3>
+                  <p className="text-xs text-[#6B7280]">
+                    Define target fields, table columns, and cross-field validation rules for automated classification.
+                  </p>
+                </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowBuilder(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                className="p-1.5 text-[#8E8E93] hover:text-[#1C1C1E] dark:hover:text-[#F2F2F7] rounded-[8px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-[0.97] cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -647,64 +657,66 @@ const Templates = () => {
             {/* Form */}
             <form onSubmit={handleCreateTemplate} className="p-6 overflow-y-auto space-y-6 flex-1">
               {formError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
-                  {formError}
+                <div className="p-3.5 rounded-[12px] bg-[#FF3B30]/10 border border-[#FF3B30]/20 text-[#FF3B30] text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{formError}</span>
                 </div>
               )}
 
-              {/* General Metadata */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                    Template Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={templateName}
-                    onChange={(e) => setTemplateName(e.target.value)}
-                    placeholder="e.g. Purchase Order, Blood Test Report, Lease Agreement"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none"
-                  />
+              {/* Template Meta */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1C1C1E] dark:text-[#F2F2F7] mb-1">
+                      Template Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      placeholder="e.g. Purchase Order, Blood Test, Certificate"
+                      className="w-full px-3.5 py-2 bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/[0.06] dark:border-white/[0.08] rounded-[10px] text-xs text-[#1C1C1E] dark:text-[#F2F2F7] focus:ring-2 focus:ring-[#007AFF] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1C1C1E] dark:text-[#F2F2F7] mb-1">
+                      Description
+                    </label>
+                    <input
+                      type="text"
+                      value={templateDesc}
+                      onChange={(e) => setTemplateDesc(e.target.value)}
+                      placeholder="Brief note about target documents"
+                      className="w-full px-3.5 py-2 bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/[0.06] dark:border-white/[0.08] rounded-[10px] text-xs text-[#1C1C1E] dark:text-[#F2F2F7] focus:ring-2 focus:ring-[#007AFF] outline-none"
+                    />
+                  </div>
                 </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                    Description
-                  </label>
-                  <input
-                    type="text"
-                    value={templateDesc}
-                    onChange={(e) => setTemplateDesc(e.target.value)}
-                    placeholder="Brief description of documents matching this template"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                    Keywords (comma-separated for auto-classification)
+                <div>
+                  <label className="block text-xs font-semibold text-[#1C1C1E] dark:text-[#F2F2F7] mb-1">
+                    Auto-Classification Keywords (comma-separated)
                   </label>
                   <input
                     type="text"
                     value={keywordsStr}
                     onChange={(e) => setKeywordsStr(e.target.value)}
                     placeholder="po number, delivery date, vendor, purchase order"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none"
+                    className="w-full px-3.5 py-2 bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/[0.06] dark:border-white/[0.08] rounded-[10px] text-xs text-[#1C1C1E] dark:text-[#F2F2F7] focus:ring-2 focus:ring-[#007AFF] outline-none"
                   />
                 </div>
               </div>
 
               {/* Fields Section */}
-              <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="space-y-3 pt-2 border-t border-black/[0.05] dark:border-white/[0.08]">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#1C1C1E] dark:text-[#F2F2F7]">
                     Fields to Extract ({fields.length})
                   </label>
                   <button
                     type="button"
                     onClick={handleAddField}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#007AFF] hover:opacity-80 active:scale-[0.97] cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" /> Add Field
                   </button>
@@ -714,7 +726,7 @@ const Templates = () => {
                   {fields.map((field, idx) => (
                     <div
                       key={idx}
-                      className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5"
+                      className="p-3.5 rounded-[14px] bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/[0.05] dark:border-white/[0.08] space-y-2.5"
                     >
                       <div className="flex items-center gap-2">
                         <div className="flex-1">
@@ -724,7 +736,7 @@ const Templates = () => {
                             placeholder="Field Label (e.g. Total Amount)"
                             value={field.label}
                             onChange={(e) => handleFieldChange(idx, 'label', e.target.value)}
-                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                            className="w-full px-3 py-1.5 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded-[8px] text-xs text-[#1C1C1E] dark:text-[#F2F2F7] focus:ring-2 focus:ring-[#007AFF] outline-none"
                           />
                         </div>
                         <div className="w-36">
@@ -737,17 +749,17 @@ const Templates = () => {
                               handleFieldChange(idx, 'customKey', true);
                               handleFieldChange(idx, 'key', e.target.value);
                             }}
-                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none"
+                            className="w-full px-3 py-1.5 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded-[8px] text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7] focus:ring-2 focus:ring-[#007AFF] outline-none"
                           />
                         </div>
                         <div className="w-32">
                           <select
                             value={field.type}
                             onChange={(e) => handleFieldChange(idx, 'type', e.target.value)}
-                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                            className="w-full px-2 py-1.5 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded-[8px] text-xs text-[#1C1C1E] dark:text-[#F2F2F7] focus:ring-2 focus:ring-[#007AFF] outline-none"
                           >
                             {FIELD_TYPES.map((ft) => (
-                              <option key={ft.value} value={ft.value}>
+                              <option key={ft.value} value={ft.value} className="dark:bg-[#1C1C1E]">
                                 {ft.label}
                               </option>
                             ))}
@@ -757,7 +769,7 @@ const Templates = () => {
                           type="button"
                           onClick={() => handleRemoveField(idx)}
                           disabled={fields.length <= 1}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 disabled:opacity-30 cursor-pointer"
+                          className="p-1.5 text-[#8E8E93] hover:text-[#FF3B30] disabled:opacity-30 cursor-pointer active:scale-[0.97]"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -769,14 +781,14 @@ const Templates = () => {
                           placeholder="Extraction hint (e.g. Grand total in INR or currency)"
                           value={field.hint}
                           onChange={(e) => handleFieldChange(idx, 'hint', e.target.value)}
-                          className="flex-1 px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 outline-none"
+                          className="flex-1 px-3 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded-[8px] text-xs text-[#1C1C1E] dark:text-[#F2F2F7] outline-none"
                         />
-                        <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                        <label className="flex items-center gap-1.5 text-xs text-[#6B7280] cursor-pointer">
                           <input
                             type="checkbox"
                             checked={field.required}
                             onChange={(e) => handleFieldChange(idx, 'required', e.target.checked)}
-                            className="rounded text-indigo-600"
+                            className="rounded text-[#007AFF]"
                           />
                           <span>Required</span>
                         </label>
@@ -784,15 +796,15 @@ const Templates = () => {
 
                       {/* Sub-columns Builder for Table Field */}
                       {field.type === 'table' && (
-                        <div className="p-3 bg-white rounded-lg border border-slate-200/80 space-y-2 mt-2">
+                        <div className="p-3 bg-white dark:bg-[#1C1C1E] rounded-[10px] border border-black/[0.05] dark:border-white/[0.08] space-y-2 mt-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-slate-700">
+                            <span className="text-[11px] font-bold text-[#1C1C1E] dark:text-[#F2F2F7]">
                               Table Sub-Columns ({field.columns?.length || 0})
                             </span>
                             <button
                               type="button"
                               onClick={() => handleAddSubColumn(idx)}
-                              className="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold"
+                              className="text-[11px] text-[#007AFF] hover:opacity-80 font-bold active:scale-[0.97] cursor-pointer"
                             >
                               + Add Column
                             </button>
@@ -807,7 +819,7 @@ const Templates = () => {
                                 onChange={(e) =>
                                   handleSubColumnChange(idx, cIdx, 'label', e.target.value)
                                 }
-                                className="flex-1 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded text-xs"
+                                className="flex-1 px-2.5 py-1 bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs text-[#1C1C1E] dark:text-[#F2F2F7]"
                               />
                               <input
                                 type="text"
@@ -817,14 +829,14 @@ const Templates = () => {
                                   handleSubColumnChange(idx, cIdx, 'customKey', true);
                                   handleSubColumnChange(idx, cIdx, 'key', e.target.value);
                                 }}
-                                className="w-28 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded text-xs font-mono"
+                                className="w-28 px-2.5 py-1 bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                               />
                               <select
                                 value={col.type}
                                 onChange={(e) =>
                                   handleSubColumnChange(idx, cIdx, 'type', e.target.value)
                                 }
-                                className="w-24 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs"
+                                className="w-24 px-2 py-1 bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs text-[#1C1C1E] dark:text-[#F2F2F7]"
                               >
                                 <option value="string">String</option>
                                 <option value="number">Number</option>
@@ -833,7 +845,7 @@ const Templates = () => {
                               <button
                                 type="button"
                                 onClick={() => handleRemoveSubColumn(idx, cIdx)}
-                                className="text-slate-400 hover:text-rose-600 p-1"
+                                className="text-[#8E8E93] hover:text-[#FF3B30] p-1 active:scale-[0.97] cursor-pointer"
                               >
                                 <X className="h-3.5 w-3.5" />
                               </button>
@@ -847,22 +859,22 @@ const Templates = () => {
               </div>
 
               {/* Validation Rules Section */}
-              <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="space-y-3 pt-2 border-t border-black/[0.05] dark:border-white/[0.08]">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#1C1C1E] dark:text-[#F2F2F7]">
                     Validation Rules ({rules.length})
                   </label>
                   <button
                     type="button"
                     onClick={handleAddRule}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#007AFF] hover:opacity-80 active:scale-[0.97] cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" /> Add Rule
                   </button>
                 </div>
 
                 {rules.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">
+                  <p className="text-xs text-[#8E8E93] italic">
                     No validation rules added yet. Add rules like sum checks, regex checks, or date ordering.
                   </p>
                 ) : (
@@ -870,16 +882,16 @@ const Templates = () => {
                     {rules.map((rule, rIdx) => (
                       <div
                         key={rIdx}
-                        className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5"
+                        className="p-3.5 rounded-[14px] bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/[0.05] dark:border-white/[0.08] space-y-2.5"
                       >
                         <div className="flex items-center gap-2">
                           <select
                             value={rule.type}
                             onChange={(e) => handleRuleChange(rIdx, 'type', e.target.value)}
-                            className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium"
+                            className="flex-1 px-3 py-1.5 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded-[8px] text-xs font-medium text-[#1C1C1E] dark:text-[#F2F2F7]"
                           >
                             {RULE_TYPES.map((rt) => (
-                              <option key={rt.value} value={rt.value}>
+                              <option key={rt.value} value={rt.value} className="dark:bg-[#1C1C1E]">
                                 {rt.label}
                               </option>
                             ))}
@@ -887,7 +899,7 @@ const Templates = () => {
                           <select
                             value={rule.severity || 'error'}
                             onChange={(e) => handleRuleChange(rIdx, 'severity', e.target.value)}
-                            className="w-28 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+                            className="w-28 px-2 py-1.5 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded-[8px] text-xs font-semibold text-[#1C1C1E] dark:text-[#F2F2F7]"
                           >
                             <option value="error">Error (Red)</option>
                             <option value="warning">Warning (Amber)</option>
@@ -895,7 +907,7 @@ const Templates = () => {
                           <button
                             type="button"
                             onClick={() => handleRemoveRule(rIdx)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 cursor-pointer"
+                            className="p-1.5 text-[#8E8E93] hover:text-[#FF3B30] cursor-pointer active:scale-[0.97]"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -904,13 +916,13 @@ const Templates = () => {
                         {/* Rule Parameters depending on type */}
                         {rule.type === 'required' && (
                           <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-slate-500 w-20">Field Key:</span>
+                            <span className="text-[11px] text-[#8E8E93] w-20">Field Key:</span>
                             <input
                               type="text"
                               placeholder="e.g. invoice_number"
                               value={rule.field || ''}
                               onChange={(e) => handleRuleChange(rIdx, 'field', e.target.value)}
-                              className="flex-1 px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              className="flex-1 px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                           </div>
                         )}
@@ -922,14 +934,14 @@ const Templates = () => {
                               placeholder="Field key (e.g. gstin)"
                               value={rule.field || ''}
                               onChange={(e) => handleRuleChange(rIdx, 'field', e.target.value)}
-                              className="px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              className="px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                             <input
                               type="text"
                               placeholder="Regex pattern (e.g. ^\d{2}[A-Z]{5}...$)"
                               value={rule.pattern || ''}
                               onChange={(e) => handleRuleChange(rIdx, 'pattern', e.target.value)}
-                              className="px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              className="px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                           </div>
                         )}
@@ -941,21 +953,21 @@ const Templates = () => {
                               placeholder="Field key"
                               value={rule.field || ''}
                               onChange={(e) => handleRuleChange(rIdx, 'field', e.target.value)}
-                              className="px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              className="px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                             <input
                               type="number"
                               placeholder="Min value"
                               value={rule.min ?? ''}
                               onChange={(e) => handleRuleChange(rIdx, 'min', parseFloat(e.target.value))}
-                              className="px-2.5 py-1 bg-white border border-slate-200 rounded text-xs"
+                              className="px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                             <input
                               type="number"
                               placeholder="Max value"
                               value={rule.max ?? ''}
                               onChange={(e) => handleRuleChange(rIdx, 'max', parseFloat(e.target.value))}
-                              className="px-2.5 py-1 bg-white border border-slate-200 rounded text-xs"
+                              className="px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                           </div>
                         )}
@@ -967,14 +979,14 @@ const Templates = () => {
                               placeholder="Before Date Key (e.g. start_date)"
                               value={rule.before || ''}
                               onChange={(e) => handleRuleChange(rIdx, 'before', e.target.value)}
-                              className="px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              className="px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                             <input
                               type="text"
                               placeholder="After Date Key (e.g. end_date)"
                               value={rule.after || ''}
                               onChange={(e) => handleRuleChange(rIdx, 'after', e.target.value)}
-                              className="px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              className="px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                           </div>
                         )}
@@ -986,21 +998,21 @@ const Templates = () => {
                               placeholder="Table (e.g. items)"
                               value={rule.table || ''}
                               onChange={(e) => handleRuleChange(rIdx, 'table', e.target.value)}
-                              className="px-2 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              className="px-2 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                             <input
                               type="text"
                               placeholder="Col (e.g. amount)"
                               value={rule.column || ''}
                               onChange={(e) => handleRuleChange(rIdx, 'column', e.target.value)}
-                              className="px-2 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              className="px-2 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                             <input
                               type="text"
                               placeholder="Target (e.g. total)"
                               value={rule.target || ''}
                               onChange={(e) => handleRuleChange(rIdx, 'target', e.target.value)}
-                              className="px-2 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              className="px-2 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                             <input
                               type="number"
@@ -1009,7 +1021,7 @@ const Templates = () => {
                               onChange={(e) =>
                                 handleRuleChange(rIdx, 'tolerance', parseFloat(e.target.value) || 0)
                               }
-                              className="px-2 py-1 bg-white border border-slate-200 rounded text-xs"
+                              className="px-2 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                           </div>
                         )}
@@ -1027,14 +1039,14 @@ const Templates = () => {
                                   e.target.value.split(',').map((f) => f.trim()).filter(Boolean)
                                 )
                               }
-                              className="px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              className="px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                             <input
                               type="text"
                               placeholder="Target field key"
                               value={rule.target || ''}
                               onChange={(e) => handleRuleChange(rIdx, 'target', e.target.value)}
-                              className="px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              className="px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                             <input
                               type="number"
@@ -1043,7 +1055,7 @@ const Templates = () => {
                               onChange={(e) =>
                                 handleRuleChange(rIdx, 'tolerance', parseFloat(e.target.value) || 0)
                               }
-                              className="px-2.5 py-1 bg-white border border-slate-200 rounded text-xs"
+                              className="px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs text-[#1C1C1E] dark:text-[#F2F2F7]"
                             />
                           </div>
                         )}
@@ -1060,7 +1072,7 @@ const Templates = () => {
                                 e.target.value.split(',').map((f) => f.trim()).filter(Boolean)
                               )
                             }
-                            className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                            className="w-full px-2.5 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded text-xs font-mono text-[#1C1C1E] dark:text-[#F2F2F7]"
                           />
                         )}
 
@@ -1070,7 +1082,7 @@ const Templates = () => {
                           placeholder="Error / Warning message when rule fails"
                           value={rule.message || ''}
                           onChange={(e) => handleRuleChange(rIdx, 'message', e.target.value)}
-                          className="w-full px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs outline-none"
+                          className="w-full px-3 py-1 bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] rounded-[8px] text-xs text-[#1C1C1E] dark:text-[#F2F2F7] outline-none"
                         />
                       </div>
                     ))}
@@ -1079,18 +1091,18 @@ const Templates = () => {
               </div>
 
               {/* Submit Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-black/[0.05] dark:border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => setShowBuilder(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-xs font-semibold text-[#8E8E93] hover:text-[#1C1C1E] dark:hover:text-[#F2F2F7] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] rounded-[10px] active:scale-[0.97] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2 bg-[#007AFF] hover:opacity-90 text-white text-xs font-semibold rounded-[10px] shadow-xs disabled:opacity-50 active:scale-[0.97] cursor-pointer"
                 >
                   {submitting ? 'Creating Template...' : 'Save & Publish Template'}
                 </button>

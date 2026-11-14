@@ -32,25 +32,25 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-indigo-50/40 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-xl shadow-slate-200/50 rounded-2xl p-8">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex h-12 w-12 rounded-2xl bg-indigo-600 text-white items-center justify-center font-bold text-xl mb-3 shadow-md shadow-indigo-200">
+    <div className="min-h-screen bg-[#F2F2F7] dark:bg-[#000000] flex items-center justify-center p-4 transition-colors">
+      <div className="w-full max-w-sm">
+        <div className="bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] shadow-[0_8px_30px_rgb(0_0_0_/_0.06)] dark:shadow-[0_8px_30px_rgb(0_0_0_/_0.5)] rounded-[24px] p-7 sm:p-8">
+          {/* Apple ID Style Minimal Header */}
+          <div className="text-center mb-7">
+            <div className="inline-flex h-12 w-12 rounded-[14px] bg-[#007AFF] text-white items-center justify-center font-bold text-lg mb-3 shadow-sm shadow-[#007AFF]/30">
               DM
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Welcome back to DocuMind
+            <h1 className="text-xl font-bold text-[#1C1C1E] dark:text-[#F2F2F7] tracking-tight">
+              Sign in to DocuMind
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Sign in to access your organization's documents
+            <p className="text-xs text-[#6B7280] dark:text-[#8E8E93] mt-1">
+              Intelligent Document Processing Platform
             </p>
           </div>
 
           {/* Error Banner */}
           {error && (
-            <div className="mb-6 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+            <div className="mb-5 p-3 rounded-[12px] bg-[#FF3B30]/10 border border-[#FF3B30]/20 text-[#FF3B30] text-xs font-medium">
               {error}
             </div>
           )}
@@ -58,35 +58,35 @@ const Login = () => {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              <label className="block text-xs font-semibold text-[#6B7280] dark:text-[#8E8E93] mb-1.5">
                 Work Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <Mail className="absolute left-3.5 top-3 h-4 w-4 text-[#8E8E93]" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@company.com"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-slate-900"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-[12px] text-sm text-[#1C1C1E] dark:text-[#F2F2F7] placeholder:text-[#8E8E93] focus:outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              <label className="block text-xs font-semibold text-[#6B7280] dark:text-[#8E8E93] mb-1.5">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <Lock className="absolute left-3.5 top-3 h-4 w-4 text-[#8E8E93]" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-slate-900"
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-[12px] text-sm text-[#1C1C1E] dark:text-[#F2F2F7] placeholder:text-[#8E8E93] focus:outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 transition-all"
                 />
               </div>
             </div>
@@ -94,7 +94,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full mt-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl transition-all shadow-sm shadow-indigo-300 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+              className="w-full mt-2 py-2.5 bg-[#007AFF] hover:bg-[#0062CC] active:scale-[0.97] text-white font-medium text-sm rounded-[12px] transition-all shadow-sm shadow-[#007AFF]/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {submitting ? (
                 <>
@@ -103,7 +103,7 @@ const Login = () => {
                 </>
               ) : (
                 <>
-                  Sign in to Workspace
+                  Sign In
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -111,14 +111,14 @@ const Login = () => {
           </form>
 
           {/* Footer */}
-          <div className="mt-8 text-center pt-6 border-t border-slate-100">
-            <p className="text-xs text-slate-500">
+          <div className="mt-7 text-center pt-5 border-t border-black/5 dark:border-white/10">
+            <p className="text-xs text-[#6B7280] dark:text-[#8E8E93]">
               Need a new workspace?{' '}
               <Link
                 to="/register"
-                className="text-indigo-600 hover:text-indigo-800 font-semibold"
+                className="text-[#007AFF] hover:underline font-semibold"
               >
-                Register your organization
+                Register Organization
               </Link>
             </p>
           </div>
@@ -129,4 +129,3 @@ const Login = () => {
 };
 
 export default Login;
-

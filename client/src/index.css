@@ -1,23 +1,28 @@
 @import "tailwindcss";
+@import "./styles/tokens.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #F2F2F7;
+  color: #1C1C1E;
   min-height: 100vh;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 150ms ease, color 150ms ease;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 body.dark {
-  background-color: #0b0f19;
-  color: #f1f5f9;
+  background-color: #000000;
+  color: #F2F2F7;
 }
 
 * {
@@ -25,32 +30,31 @@ body.dark {
 }
 
 /* ==========================================================================
-   Full Dark Mode Theme Suite (Section 9 UI & Theme Guide)
-   Transforms cards, inputs, tables, dropdowns, and text cleanly
+   Apple iOS / macOS Clean Theme Suite
    ========================================================================== */
 .dark {
   color-scheme: dark;
 }
 
-/* Cards & Surfaces */
+/* Surfaces */
 .dark .bg-white,
 .dark header.bg-white {
-  background-color: #111827 !important;
-  color: #f3f4f6 !important;
+  background-color: #1C1C1E !important;
+  color: #F2F2F7 !important;
 }
 
 .dark .bg-slate-50 {
-  background-color: #0b0f19 !important;
+  background-color: #121214 !important;
 }
 
 .dark .bg-slate-100,
 .dark .bg-slate-100\/80 {
-  background-color: #1e293b !important;
-  color: #f1f5f9 !important;
+  background-color: #2C2C2E !important;
+  color: #F2F2F7 !important;
 }
 
 .dark .bg-slate-200 {
-  background-color: #334155 !important;
+  background-color: #3A3A3C !important;
 }
 
 /* Borders */
@@ -58,144 +62,165 @@ body.dark {
 .dark .border-slate-200\/80,
 .dark .border-slate-200\/60,
 .dark .border-slate-100 {
-  border-color: #1f293d !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .dark .border-slate-300 {
-  border-color: #334155 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
 }
 
 .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
 .dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #1f293d !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Typography */
 .dark .text-slate-900 {
-  color: #f8fafc !important;
+  color: #F2F2F7 !important;
 }
 
 .dark .text-slate-800 {
-  color: #f1f5f9 !important;
+  color: #E5E5EA !important;
 }
 
 .dark .text-slate-700 {
-  color: #e2e8f0 !important;
+  color: #D1D1D6 !important;
 }
 
 .dark .text-slate-600 {
-  color: #cbd5e1 !important;
+  color: #8E8E93 !important;
 }
 
 .dark .text-slate-500 {
-  color: #94a3b8 !important;
+  color: #8E8E93 !important;
 }
 
 .dark .text-slate-400 {
-  color: #64748b !important;
+  color: #636366 !important;
 }
 
 /* Tables in Dark Mode */
 .dark table {
-  background-color: #111827 !important;
-  color: #f3f4f6 !important;
+  background-color: #1C1C1E !important;
+  color: #F2F2F7 !important;
 }
 
 .dark thead,
 .dark thead tr,
 .dark thead th {
-  background-color: #1a2234 !important;
-  color: #cbd5e1 !important;
-  border-color: #1f293d !important;
+  background-color: #161618 !important;
+  color: #8E8E93 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .dark tbody tr {
-  border-color: #1f293d !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
 }
 
 .dark tbody tr:hover {
-  background-color: #161f30 !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
 /* Form Elements */
 .dark input:not([type="checkbox"]):not([type="radio"]),
 .dark select,
 .dark textarea {
-  background-color: #1a2234 !important;
-  border-color: #2e3c54 !important;
-  color: #f8fafc !important;
+  background-color: #2C2C2E !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #F2F2F7 !important;
 }
 
 .dark input:disabled,
 .dark select:disabled,
 .dark textarea:disabled {
-  background-color: #111827 !important;
-  color: #64748b !important;
+  background-color: #1C1C1E !important;
+  color: #636366 !important;
 }
 
 .dark input::placeholder,
 .dark textarea::placeholder {
-  color: #64748b !important;
+  color: #636366 !important;
 }
 
-/* Shadows */
+/* Soft Apple Shadows */
 .dark .shadow-sm,
 .dark .shadow-md,
 .dark .shadow-lg,
 .dark .shadow-xl {
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Subtle Accent Badges */
+/* Apple iOS System Accent Badges */
 .dark .bg-indigo-50 {
-  background-color: rgba(99, 102, 241, 0.15) !important;
-  color: #a5b4fc !important;
+  background-color: rgba(94, 92, 230, 0.16) !important;
+  color: #B5B2FF !important;
 }
-.dark .border-indigo-200 { border-color: rgba(99, 102, 241, 0.3) !important; }
+.dark .border-indigo-200 { border-color: rgba(94, 92, 230, 0.3) !important; }
 
 .dark .bg-amber-50 {
-  background-color: rgba(245, 158, 11, 0.15) !important;
-  color: #fcd34d !important;
+  background-color: rgba(255, 159, 10, 0.16) !important;
+  color: #FFD60A !important;
 }
-.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.3) !important; }
+.dark .border-amber-200 { border-color: rgba(255, 159, 10, 0.3) !important; }
 
 .dark .bg-emerald-50 {
-  background-color: rgba(16, 185, 129, 0.15) !important;
-  color: #6ee7b7 !important;
+  background-color: rgba(48, 209, 88, 0.16) !important;
+  color: #64D2FF !important;
 }
-.dark .border-emerald-200 { border-color: rgba(16, 185, 129, 0.3) !important; }
+.dark .border-emerald-200 { border-color: rgba(48, 209, 88, 0.3) !important; }
 
 .dark .bg-rose-50 {
-  background-color: rgba(244, 63, 94, 0.15) !important;
-  color: #fda4af !important;
+  background-color: rgba(255, 69, 58, 0.16) !important;
+  color: #FF453A !important;
 }
-.dark .border-rose-200 { border-color: rgba(244, 63, 94, 0.3) !important; }
+.dark .border-rose-200 { border-color: rgba(255, 69, 58, 0.3) !important; }
 
 .dark .bg-blue-50 {
-  background-color: rgba(59, 130, 246, 0.15) !important;
-  color: #93c5fd !important;
+  background-color: rgba(10, 132, 255, 0.16) !important;
+  color: #70B4FF !important;
 }
-.dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.3) !important; }
-
-.dark .bg-purple-50 {
-  background-color: rgba(168, 85, 247, 0.15) !important;
-  color: #d8b4fe !important;
-}
-.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3) !important; }
+.dark .border-blue-200 { border-color: rgba(10, 132, 255, 0.3) !important; }
 
 /* Modal overlays & dialogs */
 .dark .bg-black\/50,
 .dark .bg-slate-900\/50 {
-  background-color: rgba(0, 0, 0, 0.75) !important;
+  background-color: rgba(0, 0, 0, 0.72) !important;
 }
 
-/* Lite Mode: Blur disabled for maximum performance on low-end machines (Phase 6 UI Polish) */
+/* Custom Slender iOS Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.16);
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* ==========================================================================
+   Lite Mode (Zero-Blur & Reduced Overhead for 60fps responsiveness)
+   ========================================================================== */
 body.lite-mode *,
 body.lite-mode header,
-body.lite-mode div {
+body.lite-mode div,
+body.lite-mode .glass {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-
-
-

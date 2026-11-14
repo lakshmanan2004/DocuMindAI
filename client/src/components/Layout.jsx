@@ -7,7 +7,6 @@ import {
   UploadCloud,
   Layers,
   MessageSquare,
-  FileCheck,
   Users,
   LogOut,
   Building2,
@@ -42,7 +41,7 @@ const Layout = () => {
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
-  // Lite Mode (switches blur off for maximum responsiveness on laptops)
+  // Lite Mode (switches blur off for maximum responsiveness on low-end machines)
   const [liteMode, setLiteMode] = useState(() => {
     return localStorage.getItem('documind_lite_mode') === 'true';
   });
@@ -66,90 +65,116 @@ const Layout = () => {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Document Library', path: '/library', icon: FileText },
-    { name: 'Upload Documents', path: '/upload', icon: UploadCloud, hideForViewer: true },
+    { name: 'Upload', path: '/upload', icon: UploadCloud, hideForViewer: true },
     { name: 'Templates', path: '/templates', icon: Layers, adminOnly: true },
     { name: 'AI Chat', path: '/chat', icon: MessageSquare },
     { name: 'Hybrid Search', path: '/search', icon: Search },
     { name: 'Team & Roles', path: '/users', icon: Users, adminOnly: true },
     { name: 'Audit Log', path: '/audit', icon: ShieldCheck, adminOnly: true },
-    { name: 'Profile & Security', path: '/profile', icon: UserCircle },
+    { name: 'Profile', path: '/profile', icon: UserCircle }
   ];
 
   return (
-    <div className={`min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors ${liteMode ? 'no-blur' : ''}`}>
-      {/* Top Navbar */}
+    <div
+      className={`min-h-screen flex flex-col bg-[#F2F2F7] dark:bg-[#000000] text-[#1C1C1E] dark:text-[#F2F2F7] transition-colors ${
+        liteMode ? 'no-blur' : ''
+      }`}
+    >
+      {/* Top Navigation Bar (Controlled Glassmorphism) */}
       <header
-        className={`sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 transition-colors ${
-          liteMode ? 'bg-white dark:bg-slate-900 shadow-sm' : 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md'
+        className={`sticky top-0 z-40 w-full border-b border-black/[0.06] dark:border-white/[0.08] transition-colors ${
+          liteMode
+            ? 'bg-white dark:bg-[#1C1C1E] shadow-sm'
+            : 'glass bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-md'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white font-bold shadow-sm shadow-indigo-200 dark:shadow-indigo-900/30">
+          {/* Brand Identity */}
+          <Link to="/dashboard" className="flex items-center gap-2.5 group cursor-pointer">
+            <div className="h-9 w-9 rounded-[10px] bg-[#007AFF] flex items-center justify-center text-white font-bold text-sm shadow-sm shadow-[#007AFF]/25 transition-transform group-hover:scale-105 active:scale-95">
               DM
             </div>
-            <div>
-              <span className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">DocuMind</span>
-              <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
-                MVP
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-base tracking-tight text-[#1C1C1E] dark:text-white">
+                DocuMind
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#007AFF]/10 text-[#007AFF] tracking-wider uppercase">
+                AI
               </span>
             </div>
-          </div>
+          </Link>
 
-          <div className="flex items-center gap-3 sm:gap-4">
+          {/* Action Center (Theme, Lite Mode, Organization, User Profile) */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5">
             {/* Dark Mode Toggle */}
             <button
+              type="button"
               onClick={toggleDarkMode}
               title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors"
+              className="p-2 rounded-[10px] text-[#6B7280] dark:text-[#8E8E93] hover:text-[#1C1C1E] dark:hover:text-white bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
             >
-              {darkMode ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-600" />}
+              {darkMode ? (
+                <Sun className="h-4 w-4 text-amber-400" />
+              ) : (
+                <Moon className="h-4 w-4 text-[#1C1C1E]" />
+              )}
             </button>
 
-            {/* Lite Mode Toggle */}
+            {/* Lite Mode Performance Toggle */}
             <button
+              type="button"
               onClick={toggleLiteMode}
-              title={liteMode ? 'Switch to Standard Glass UI' : 'Switch to Lite Mode (Blur Off for Performance)'}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+              title={
                 liteMode
-                  ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 hover:bg-amber-100'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'Lite Mode is ON (Blur off for max performance)'
+                  : 'Switch to Lite Mode (Blur off for performance)'
+              }
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all active:scale-95 cursor-pointer ${
+                liteMode
+                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                  : 'bg-black/5 dark:bg-white/10 text-[#6B7280] dark:text-[#8E8E93] border-transparent hover:bg-black/10 dark:hover:bg-white/15'
               }`}
             >
-              <Zap className={`h-3 w-3 ${liteMode ? 'text-amber-600 dark:text-amber-400 fill-amber-500' : 'text-slate-500'}`} />
+              <Zap
+                className={`h-3.5 w-3.5 ${
+                  liteMode ? 'text-amber-500 fill-amber-500' : 'text-[#6B7280] dark:text-[#8E8E93]'
+                }`}
+              />
               <span className="hidden sm:inline">Lite:</span>
-              <span className="font-bold">{liteMode ? 'ON' : 'OFF'}</span>
+              <span>{liteMode ? 'ON' : 'OFF'}</span>
             </button>
 
-            {/* Tenant indicator */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 text-xs font-medium text-slate-700 dark:text-slate-300">
-              <Building2 className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
-              <span>{organization?.name || 'Workspace'}</span>
+            {/* Tenant Indicator */}
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/10 text-xs font-medium text-[#1C1C1E] dark:text-[#F2F2F7]">
+              <Building2 className="h-3.5 w-3.5 text-[#007AFF]" />
+              <span className="truncate max-w-[140px]">{organization?.name || 'Workspace'}</span>
             </div>
 
-            {/* User profile & role badge */}
-            <div className="flex items-center gap-3 border-l border-slate-200 dark:border-slate-800 pl-3 sm:pl-4">
+            {/* User Profile Capsule */}
+            <div className="flex items-center gap-2 pl-2 border-l border-black/10 dark:border-white/10">
               <Link
                 to="/profile"
-                title="View Account Profile & Role"
-                className="flex items-center gap-2 group hover:opacity-80 transition-opacity"
+                title="View Account Profile"
+                className="flex items-center gap-2 p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer"
               >
-                <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
-                  {user?.name ? user.name.slice(0, 2).toUpperCase() : 'U'}
+                <div className="h-8 w-8 rounded-full bg-[#007AFF]/15 text-[#007AFF] font-bold text-xs flex items-center justify-center">
+                  {user?.name ? user.name.slice(0, 2).toUpperCase() : 'DM'}
                 </div>
-                <div className="text-right hidden sm:block">
-                  <div className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                <div className="text-left hidden lg:block pr-1">
+                  <div className="text-xs font-semibold text-[#1C1C1E] dark:text-[#F2F2F7] leading-none mb-0.5">
                     {user?.name}
                   </div>
-                  <div className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 tracking-wider">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#007AFF]">
                     {user?.role}
                   </div>
                 </div>
               </Link>
+
               <button
+                type="button"
                 onClick={handleLogout}
                 title="Log out"
-                className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                className="p-2 text-[#6B7280] dark:text-[#8E8E93] hover:text-[#FF3B30] hover:bg-[#FF3B30]/10 rounded-[10px] transition-all cursor-pointer active:scale-95"
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -158,10 +183,10 @@ const Layout = () => {
         </div>
       </header>
 
-      {/* Main Body with Sub-nav tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 flex flex-col">
-        {/* Navigation Bar */}
-        <nav className="flex space-x-2 border-b border-slate-200 dark:border-slate-800 pb-4 mb-6 overflow-x-auto">
+      {/* Main Body */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full flex-1 flex flex-col">
+        {/* Apple Segmented Navigation Bar */}
+        <nav className="flex items-center space-x-1.5 bg-black/[0.03] dark:bg-white/[0.05] p-1.5 rounded-[16px] mb-6 overflow-x-auto scrollbar-none border border-black/[0.03] dark:border-white/[0.05]">
           {navItems.map((item) => {
             if (item.adminOnly && user?.role !== 'admin') return null;
             if (item.hideForViewer && user?.role === 'viewer') return null;
@@ -171,15 +196,15 @@ const Layout = () => {
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all shrink-0 ${
+                  `flex items-center gap-2 px-3.5 py-2 rounded-[12px] text-xs font-semibold transition-all shrink-0 cursor-pointer active:scale-95 ${
                     isActive
-                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200 dark:shadow-indigo-900/30'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-white dark:bg-[#1C1C1E] text-[#007AFF] dark:text-white shadow-sm font-bold'
+                      : 'text-[#6B7280] dark:text-[#8E8E93] hover:text-[#1C1C1E] dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5'
                   }`
                 }
               >
                 <Icon className="h-4 w-4" />
-                {item.name}
+                <span>{item.name}</span>
               </NavLink>
             );
           })}
@@ -195,4 +220,3 @@ const Layout = () => {
 };
 
 export default Layout;
-

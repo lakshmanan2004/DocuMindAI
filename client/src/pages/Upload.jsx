@@ -7,9 +7,7 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-  ArrowRight,
-  Layers,
-  Folder as FolderIcon
+  ArrowRight
 } from 'lucide-react';
 import { Button, Card, Select, StatusBadge } from '../ui';
 
@@ -122,10 +120,10 @@ const Upload = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#1C1C1E] dark:text-[#F2F2F7] tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#1C1C1E] dark:text-[#F2F2F7] tracking-tight">
           Upload Documents
         </h1>
-        <p className="text-sm text-[#6B7280] mt-1">
+        <p className="text-sm text-[#6B7280] dark:text-[#8E8E93] mt-1">
           Upload PDFs or images for background OCR, AI classification, schema-driven field extraction, and vector embedding.
         </p>
       </div>
@@ -135,7 +133,7 @@ const Upload = () => {
         <Card className="bg-[#34C759]/10 border border-[#34C759]/20 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-[#34C759] font-semibold text-sm">
-              <CheckCircle2 className="w-5 h-5" />
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
               <span>{uploadResults.length} document(s) uploaded and queued for background processing!</span>
             </div>
             <Button
@@ -175,7 +173,7 @@ const Upload = () => {
             onChange={(e) => setSelectedTemplateId(e.target.value)}
             options={templateOptions}
           />
-          <span className="text-[11px] text-[#6B7280] mt-1 block">
+          <span className="text-[11px] text-[#6B7280] dark:text-[#8E8E93] mt-1 block">
             Leave as Auto-Detect for DocuMind to identify the template automatically.
           </span>
         </div>
@@ -187,21 +185,21 @@ const Upload = () => {
             onChange={(e) => setSelectedFolderId(e.target.value)}
             options={folderOptions}
           />
-          <span className="text-[11px] text-[#6B7280] mt-1 block">
+          <span className="text-[11px] text-[#6B7280] dark:text-[#8E8E93] mt-1 block">
             Organize documents into single-level tenant folders.
           </span>
         </div>
       </Card>
 
-      {/* Drag & Drop Area */}
+      {/* Drag & Drop Area (Apple AirDrop Style) */}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onClick={() => fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-[20px] p-10 text-center cursor-pointer transition-all ${
+        className={`border-2 border-dashed rounded-[24px] p-10 text-center cursor-pointer transition-all ${
           fileList.length > 0
             ? 'border-[#007AFF] bg-[#007AFF]/5'
-            : 'border-black/15 dark:border-white/15 hover:border-[#007AFF] bg-white dark:bg-[#1C1C1E]'
+            : 'border-black/10 dark:border-white/10 hover:border-[#007AFF] bg-white dark:bg-[#1C1C1E] hover:bg-black/[0.01] dark:hover:bg-white/[0.01]'
         }`}
       >
         <input
@@ -214,14 +212,14 @@ const Upload = () => {
         />
 
         <div className="flex flex-col items-center">
-          <div className="h-16 w-16 rounded-2xl bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center mb-4">
+          <div className="h-16 w-16 rounded-[18px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center mb-4 transition-transform hover:scale-105 active:scale-95">
             <UploadCloud className="h-8 w-8" />
           </div>
           <h3 className="text-base font-semibold text-[#1C1C1E] dark:text-[#F2F2F7]">
-            {fileList.length > 0 ? `${fileList.length} file(s) selected` : 'Drag & drop your files here'}
+            {fileList.length > 0 ? `${fileList.length} file(s) selected` : 'Drag & drop files here'}
           </h3>
-          <p className="text-xs text-[#6B7280] mt-1">
-            Supports multi-file upload for PDF, PNG, JPG or JPEG (Max 15MB each)
+          <p className="text-xs text-[#6B7280] dark:text-[#8E8E93] mt-1 max-w-sm">
+            Supports multi-file upload for PDF, PNG, JPG, or JPEG (Max 15MB per file)
           </p>
           <Button
             type="button"
@@ -233,7 +231,7 @@ const Upload = () => {
               fileInputRef.current?.click();
             }}
           >
-            Browse files
+            Browse Files
           </Button>
         </div>
       </div>
@@ -259,12 +257,12 @@ const Upload = () => {
             {fileList.map((f, idx) => (
               <div key={idx} className="py-2.5 flex items-center justify-between">
                 <div className="flex items-center gap-3 truncate max-w-md">
-                  <div className="h-8 w-8 rounded-lg bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0">
+                  <div className="h-8 w-8 rounded-[8px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0">
                     <FileText className="h-4 w-4" />
                   </div>
                   <div className="truncate">
                     <div className="text-xs font-semibold text-[#1C1C1E] dark:text-[#F2F2F7] truncate">{f.name}</div>
-                    <div className="text-[11px] text-[#6B7280]">
+                    <div className="text-[11px] text-[#6B7280] dark:text-[#8E8E93]">
                       {(f.size / (1024 * 1024)).toFixed(2)} MB • {f.type || 'Document'}
                     </div>
                   </div>
@@ -273,7 +271,7 @@ const Upload = () => {
                 <button
                   type="button"
                   onClick={() => removeFile(idx)}
-                  className="p-1.5 text-[#6B7280] hover:text-[#FF3B30] rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 text-[#6B7280] dark:text-[#8E8E93] hover:text-[#FF3B30] rounded-lg transition-colors cursor-pointer active:scale-95"
                 >
                   <X className="w-4 h-4" />
                 </button>
